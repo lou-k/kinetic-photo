@@ -1,0 +1,2 @@
+db:
+  database: "file:dev.db"
