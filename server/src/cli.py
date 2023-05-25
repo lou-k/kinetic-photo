@@ -30,12 +30,6 @@ def streams(
         case "add":
             with open(args.params_file) as fin:
                 params = json.load(fin)
-            if args.filter_file:
-                with open(args.params_file) as fin:
-                    filter = json.load(fin)
-            else:
-                filter = None
-
             # Ensure we have an intgeration id if needed
             typ = StreamType[args.type]
             if (
@@ -52,7 +46,7 @@ def streams(
                 typ=typ,
                 integration_id=args.integration,
                 params=params,
-                filter=filter,
+                filter=args.filter,
             )
             logging.info(f'Created stream {stream_id} with name "{args.name}"')
             show_head(stream_id, 5)
@@ -71,7 +65,7 @@ def streams_parser(app_subparsers: argparse._SubParsersAction):
         type=str,
     )
     add_parser.add_argument(
-        "-f", "--filter-file", help="The filename to load the parmaters from", type=str
+        "-f", "--filter", help="A json-path filter to apply over the stream media", type=str
     )
     add_parser.add_argument("name", help="What to name this stream")
     add_parser.add_argument(

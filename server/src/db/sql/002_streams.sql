@@ -4,7 +4,7 @@ CREATE TABLE streams (
     type TEXT NOT NULL,
     integration_id INTEGER,
     params_json TEXT,
-    filters_json TEXT,
+    filter TEXT,
     FOREIGN KEY (integration_id)
          REFERENCES integrations (id)
          ON DELETE CASCADE

@@ -65,7 +65,7 @@ class StreamsDb(DataStore):
         with self.connection:
             cursor = self.connection.cursor()
             cursor.execute(
-                "INSERT INTO streams(name, type, integration_id, params_json, filters_json) VALUES(?, ?, ?, ?, ?)",
+                "INSERT INTO streams(name, type, integration_id, params_json, filter) VALUES(?, ?, ?, ?, ?)",
                 (name, type, integration_id, params, filters),
             )
             return cursor.lastrowid

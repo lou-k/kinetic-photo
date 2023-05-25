@@ -9,6 +9,7 @@ gphotospy = "*"
 dependency-injector = {extras = ["yaml"], version = "*"}
 pandas = "*"
 dataclasses-json = "*"
+jsonpath-ng = "*"
 
 [dev-packages]
 ipython = "*"

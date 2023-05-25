@@ -33,6 +33,7 @@ class StreamMedia:
         )
     )
     resolution: Resolution  # The resolution of the media
+    filename: str # The orginal filename
     external_id: Optional[
         str
     ] = None  # The id of the media used by the source provider -- i.e., google photos id.

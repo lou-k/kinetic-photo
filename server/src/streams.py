@@ -1,9 +1,9 @@
-import logging
 from datetime import datetime
 from enum import Enum
 from typing import Optional
 
 from gphotospy.media import *
+from jsonpath_ng.ext import parse
 
 from common import Resolution, StreamMedia
 from db import StreamsDb
@@ -27,6 +27,22 @@ class Stream:
         ...
 
 
+class Filter:
+    def __init__(self, expression: str, over: Stream):
+        self.over = over
+        self.expression = expression
+
+    def __iter__(self):
+        self.over.__iter__()
+        return self
+
+    def __next__(self) -> StreamMedia:
+        while True:
+            media = next(self.over)
+            if len(parse(self.expression).find([media.to_dict()])):
+                return media
+
+
 class StreamsApi:
     def __init__(self, db: StreamsDb, integrations_api: IntegrationsApi):
         self._db = db
@@ -48,8 +64,6 @@ class StreamsApi:
     ) -> int:
         if params:
             params = json.dumps(params)
-        if filter:
-            filter = json.dumps(filter)
         return self._db.add(name, typ.name, integration_id, params, filter)
 
     def get(self, id: int) -> Stream:
@@ -70,13 +84,18 @@ class StreamsApi:
                     raise Exception(
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
-                return GooglePhotosAlbumStream(id, integration, **params)
+                source = GooglePhotosAlbumStream(id, integration, **params)
             case StreamType.Google_Photos_Search:
                 if not integration:
                     raise Exception(
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
-                return GooglePhotosSearchStream(id, integration, **params)
+                source = GooglePhotosSearchStream(id, integration, **params)
+
+        if filter:
+            return Filter(expression=filter, over=source)
+        else:
+            return source
 
 
 class GooglePhotosStream(Stream):
@@ -94,6 +113,7 @@ class GooglePhotosStream(Stream):
             ),
             url=m.get_url(for_download=True),
             external_id=m.val["id"],
+            filename=m.val["filename"],
         )
 
     def __next__(self):
