@@ -16,7 +16,7 @@ class IntegrationsApi:
         self._db = db
 
     def list(self):
-        return self._db.list_integrations()
+        return self._db.list()
 
     def get(self, id: int):
         _, _, typ, params = self._db.get(id)

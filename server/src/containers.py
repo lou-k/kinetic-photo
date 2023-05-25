@@ -4,8 +4,9 @@ import sqlite3
 from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
 
-from db import DataStore, IntegrationsDb
+from db import DataStore, IntegrationsDb, StreamsDb
 from integrations import IntegrationsApi
+from streams import StreamsApi
 
 
 class Container(containers.DeclarativeContainer):
@@ -24,6 +25,9 @@ class Container(containers.DeclarativeContainer):
 
     integrations_db = providers.Singleton(IntegrationsDb, database_connection)
     integrations_api = providers.Singleton(IntegrationsApi, integrations_db)
+
+    streams_db = providers.Singleton(StreamsDb, database_connection)
+    streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api)
 
 
 @inject
