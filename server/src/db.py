@@ -24,11 +24,15 @@ def _update_database_if_needed(connection: sqlite3.Connection) -> None:
                 with open(file_path, "r") as sql_file:
                     connection.executescript(sql_file.read())
 
+def _set_pragmas(connection: sqlite3.Connection) -> None:
+    with connection:
+        connection.execute("PRAGMA foreign_keys = ON")
 
 class DataStore:
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
         _update_database_if_needed(self.connection)
+        _set_pragmas(self.connection)
 
 class StreamsDb(DataStore):
     def __init__(self, connection: sqlite3.Connection):

@@ -1,8 +1,11 @@
+import logging
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 
 from gphotospy.media import *
 
+from common import Resolution, StreamMedia
 from db import StreamsDb
 from integrations import IntegrationsApi
 from integrations.common import Integration
@@ -14,6 +17,9 @@ class StreamType(Enum):
 
 
 class Stream:
+    def __init__(self, id: int):
+        self.id = id
+
     def __iter__(self):
         return self
 
@@ -28,7 +34,7 @@ class StreamsApi:
 
     def remove(self, id: int) -> None:
         self._db.remove(id)
-    
+
     def list(self):
         return self._db.list()
 
@@ -64,27 +70,39 @@ class StreamsApi:
                     raise Exception(
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
-                return GooglePhotosAlbumStream(integration=integration, **params)
+                return GooglePhotosAlbumStream(id, integration, **params)
             case StreamType.Google_Photos_Search:
                 if not integration:
                     raise Exception(
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
-                return GooglePhotosSearchStream(integration=integration, **params)
+                return GooglePhotosSearchStream(id, integration, **params)
 
 
 class GooglePhotosStream(Stream):
-    def __init__(self, integration: Integration):
+    def __init__(self, id: int, integration: Integration):
+        super().__init__(id)
         self.integration = integration
 
+    def __to_media__(self, m: MediaItem) -> StreamMedia:
+        return StreamMedia(
+            stream_id=self.id,
+            is_video=m.is_video(),
+            created_at=datetime.fromisoformat(m.metadata()["creationTime"]),
+            resolution=Resolution(
+                width=int(m.metadata()["width"]), height=int(m.metadata()["height"])
+            ),
+            url=m.get_url(for_download=True),
+            external_id=m.val["id"],
+        )
+
     def __next__(self):
-        # TODO -- convert to common image type
-        return next(self.iterator)
+        return self.__to_media__(MediaItem(next(self.iterator)))
 
 
 class GooglePhotosAlbumStream(GooglePhotosStream):
-    def __init__(self, integration: Integration, album_id: str):
-        super().__init__(integration)
+    def __init__(self, id: int, integration: Integration, album_id: str):
+        super().__init__(id, integration)
         self.album_id = album_id
 
     def __iter__(self):
@@ -95,9 +113,13 @@ class GooglePhotosAlbumStream(GooglePhotosStream):
 
 class GooglePhotosSearchStream(GooglePhotosStream):
     def __init__(
-        self, integration: Integration, filter: Optional[str] = None, exclude: Optional[str] = None
+        self,
+        id: int,
+        integration: Integration,
+        filter: Optional[str] = None,
+        exclude: Optional[str] = None,
     ):
-        super().__init__(integration)
+        super().__init__(id, integration)
         # we'll call eval here to convert the filter and exclusions into the proper gphotospy types.
         # this isn't ideal... perhaps we should switch away from gphotospy and use the api directly...
         if filter:

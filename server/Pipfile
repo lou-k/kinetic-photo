@@ -8,6 +8,7 @@ pyyaml = "*"
 gphotospy = "*"
 dependency-injector = {extras = ["yaml"], version = "*"}
 pandas = "*"
+dataclasses-json = "*"
 
 [dev-packages]
 ipython = "*"

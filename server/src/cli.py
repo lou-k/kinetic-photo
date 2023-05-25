@@ -19,7 +19,7 @@ def streams(
         stream = streams_api.get(id=id)
         logging.info(f"First {n} items in stream {id}:")
         for i in itertools.islice(stream, n):
-            logging.info(i)
+            logging.info(i.to_json())
 
     match args.action:
         case "list":
