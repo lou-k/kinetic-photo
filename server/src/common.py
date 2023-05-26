@@ -23,6 +23,7 @@ class StreamMedia:
     """
     A piece of media produced by a stream
     """
+
     stream_id: int  # Which stream this media came from
     is_video: bool  # If True, this media is a video
     created_at: datetime = field(  # When the media was created
@@ -33,7 +34,7 @@ class StreamMedia:
         )
     )
     resolution: Resolution  # The resolution of the media
-    filename: str # The orginal filename
+    filename: str  # The orginal filename
     external_id: Optional[
         str
     ] = None  # The id of the media used by the source provider -- i.e., google photos id.
@@ -41,3 +42,19 @@ class StreamMedia:
     object_hash: Optional[
         str
     ] = None  # The hash of the media (if stored locally in the object store)
+
+
+@dataclass_json
+@dataclass
+class Content:
+    """
+    A piece of content is a rendered video that will be displayed on the frame.
+    """
+
+    id: str  # The hash of the file in the object store
+    created_at: str  # When this object was created
+    width: int  # Width of the video in pixels
+    height: int  # Height of the video in pixels
+    external_id: Optional[str] = None  # The id of the media used by the source provider -- i.e., google photos id.
+    metadata: Optional[dict] = None  # Other data that may be useful but is not garunteed to always be provided.
+    stream_id: Optional[int] = None  # Which stream contained the original media

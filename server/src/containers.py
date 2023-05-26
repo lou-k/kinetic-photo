@@ -4,7 +4,7 @@ import sqlite3
 from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
 
-from db import DataStore, IntegrationsDb, StreamsDb
+from db import initialize, IntegrationsDb, StreamsDb
 from integrations import IntegrationsApi
 from streams import StreamsApi
 
@@ -19,8 +19,10 @@ class Container(containers.DeclarativeContainer):
         fname="logging.ini",
     )
 
-    database_connection = providers.Singleton(
-        sqlite3.connect, database=config.db.database
+    database_connection = providers.Resource(
+        initialize,
+        database=config.db.database
+
     )
 
     integrations_db = providers.Singleton(IntegrationsDb, database_connection)

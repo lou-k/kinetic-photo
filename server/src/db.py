@@ -2,8 +2,10 @@ import glob
 import json
 import logging
 import os
+from shutil import _StrOrBytesPathT
 import sqlite3
-from typing import Optional
+from typing import List, Optional
+from common import Content
 
 import pandas as pd
 
@@ -24,26 +26,31 @@ def _update_database_if_needed(connection: sqlite3.Connection) -> None:
                 with open(file_path, "r") as sql_file:
                     connection.executescript(sql_file.read())
 
+
 def _set_pragmas(connection: sqlite3.Connection) -> None:
     with connection:
         connection.execute("PRAGMA foreign_keys = ON")
 
-class DataStore:
+
+def initialize(**args) -> sqlite3.Connection:
+    con = sqlite3.connect(**args)
+    _update_database_if_needed(con)
+    _set_pragmas(con)
+    return con
+
+
+class StreamsDb:
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
-        _update_database_if_needed(self.connection)
-        _set_pragmas(self.connection)
 
-class StreamsDb(DataStore):
-    def __init__(self, connection: sqlite3.Connection):
-        super().__init__(connection=connection)
-    
     def list(self) -> pd.DataFrame:
         """
         Lists all streams in the datastore.
         """
         with self.connection:
-            return pd.read_sql_query("SELECT * FROM streams", self.connection, index_col="id")
+            return pd.read_sql_query(
+                "SELECT * FROM streams", self.connection, index_col="id"
+            )
 
     def get(self, id: int):
         with self.connection:
@@ -58,7 +65,14 @@ class StreamsDb(DataStore):
         with self.connection:
             self.connection.execute("DELETE FROM streams WHERE id = ?", (id,))
 
-    def add(self, name: str, type: str, integration_id: Optional[int], params: Optional[dict], filters: Optional[dict]) -> int:
+    def add(
+        self,
+        name: str,
+        type: str,
+        integration_id: Optional[int],
+        params: Optional[dict],
+        filters: Optional[dict],
+    ) -> int:
         """
         Saves a new streams to the datastore and returns it's id.
         """
@@ -71,16 +85,18 @@ class StreamsDb(DataStore):
             return cursor.lastrowid
 
 
-class IntegrationsDb(DataStore):
+class IntegrationsDb:
     def __init__(self, connection: sqlite3.Connection):
-        super().__init__(connection=connection)
+        self.connection = connection
 
     def list(self) -> pd.DataFrame:
         """
         Lists all integrations in the datastore.
         """
         with self.connection:
-            return pd.read_sql_query("SELECT * FROM integrations", self.connection, index_col="id")
+            return pd.read_sql_query(
+                "SELECT * FROM integrations", self.connection, index_col="id"
+            )
 
     def get(self, id: int):
         with self.connection:
@@ -106,3 +122,73 @@ class IntegrationsDb(DataStore):
                 (name, type, params),
             )
             return cursor.lastrowid
+
+
+class ContenDb:
+    def __init__(self, connection: sqlite3.Connection):
+        self.connection = connection
+
+    def save(self, c: Content):
+        metadata = c.metadata
+        if c.metadata:
+            metadata = json.dumps(c.metadata)
+        with self.connection:
+            self.connection.execute(
+                "REPLACE INTO content (id, created_at, height, width, external_id, metadata, stream_id) VALUES(?, ?, ?, ?, ?, ?, ?)",
+                c.id,
+                c.created_at,
+                c.height,
+                c.width,
+                c.external_id,
+                metadata,
+                c.stream_id,
+            )
+
+    def query(
+        self,
+        limit: int,
+        stream_id: Optional[int] = None,
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+    ) -> List[Content]:
+        conditionals = [
+            x
+            for x in [
+                ("stream_id = ?", stream_id),
+                ("created_at > ?", created_after),
+                ("created_at < ?", created_before),
+            ]
+            if x[1]
+        ]
+
+        where_clause = " AND ".join([c[0] for c in conditionals])
+        parameters = tuple([c[1] for c in conditionals])
+
+        query = "SELECT * FROM content "
+        if len(conditionals):
+            query += "WHERE " + where_clause
+        query += " LIMIT ?"
+        parameters += (limit,)
+
+        with self.connection:
+            results = self.connection.execute(query, parameters).fetchall()
+        return [
+            Content(
+                id=id,
+                created_at=created_at,
+                width=width,
+                height=height,
+                external_id=external_id,
+                metadata=metadata,
+                stream_id=stream_id,
+            )
+            for (
+                id,
+                created_at,
+                width,
+                height,
+                external_id,
+                metadata,
+                stream_id,
+            ) in results
+        ]
