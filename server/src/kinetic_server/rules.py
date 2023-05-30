@@ -5,7 +5,7 @@ import sys
 
 from jsonpath_ng.ext import parse
 
-from common import StreamMedia
+from .common import StreamMedia
 
 
 class Rule:

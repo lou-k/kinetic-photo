@@ -1,8 +1,8 @@
 from typing import List, Optional
 
 from disk_objectstore import Container
-from common import Content, Resolution
-from db import ContentDb
+from .common import Content, Resolution
+from .db import ContentDb
 from datetime import datetime
 
 

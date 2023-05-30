@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 
-from db import IntegrationsDb
+from ..db import IntegrationsDb
 
 from .common import Integration
 from .googlephotos import GooglePhotos

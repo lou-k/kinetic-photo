@@ -3,16 +3,14 @@ from datetime import datetime
 from tempfile import NamedTemporaryFile
 from typing import Iterator
 
+import pandas as pd
 from disk_objectstore import Container
 
-from common import PipelineRun, PipelineStatus, StreamMedia
-from content import ContentApi
-from db import PipelineDb
-
-import pandas as pd
-
-from processors import Processor
-from rules import Rule
+from .common import PipelineRun, PipelineStatus, StreamMedia
+from .content import ContentApi
+from .db import PipelineDb
+from .processors import Processor
+from .rules import Rule
 
 
 class Pipeline:
@@ -24,17 +22,14 @@ class Pipeline:
         self._objectstore = objectstore
         self.id, self.name, self.steps = self._db.get(id)
 
-    def __call__(self, stream: Iterator[StreamMedia], limit:int = None) -> None:
+    def __call__(self, stream: Iterator[StreamMedia], limit: int = None) -> None:
         with PipelineLogger(self._db, self._objectstore, self.id, self.name) as logger:
-            
             num_successful = 0
             num_failed = 0
             for i, media in enumerate(stream):
                 # stop if limit is reached
                 if limit and i > limit:
-                    logger.info(
-                        f"Processed {limit} pieces of media. Stopping..."
-                    )
+                    logger.info(f"Processed {limit} pieces of media. Stopping...")
                     break
 
                 # Check each rule to see if we can apply it
@@ -75,7 +70,9 @@ class Pipeline:
 
 
 class PipelineLogger:
-    def __init__(self, db: PipelineDb, objectstore: Container, pipeline_id: int, name: str):
+    def __init__(
+        self, db: PipelineDb, objectstore: Container, pipeline_id: int, name: str
+    ):
         self._db = db
         self._pipeline_id = pipeline_id
         self._objectstore = objectstore
@@ -88,7 +85,9 @@ class PipelineLogger:
         self.logfile = NamedTemporaryFile()
         self.logger = logging.getLogger(self._name)
         self.handler = logging.FileHandler(self.logfile.name)
-        self.handler.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s"))
+        self.handler.setFormatter(
+            logging.Formatter("[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s")
+        )
         self.logger.addHandler(self.handler)
         return self.logger
 
@@ -107,7 +106,7 @@ class PipelineLogger:
         # Remove the  logging hanlder
         self.logger.removeHandler(self.handler)
         # Save the log to the objectstore
-        with open(self.logfile.name, mode='rb') as fin:
+        with open(self.logfile.name, mode="rb") as fin:
             log_hash = self._objectstore.add_object(fin.read())
 
         # removes the temporary file
@@ -136,20 +135,20 @@ class PipelineApi:
         self._db = db
         self._content_api = content_api
         self._objectstore = objectstore
-    
+
     def get(self, id: int) -> Pipeline:
         return Pipeline(self._db, self._content_api, self._objectstore, id)
-    
+
     def list(self) -> pd.DataFrame:
         return self._db.list()
 
     def list_runs(self) -> pd.DataFrame:
         return self._db.list_runs()
-    
+
     def create(self, name: str) -> Pipeline:
         id = self._db.create(name)
         return self.get(id)
-    
+
     def add_step(self, pipeline_id: int, rule: Rule, processor: Processor) -> Pipeline:
         self._db.add_step(pipeline_id=pipeline_id, rule=rule, processor=processor)
         return self.get(pipeline_id)

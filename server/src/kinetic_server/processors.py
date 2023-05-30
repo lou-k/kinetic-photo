@@ -5,7 +5,7 @@ import sys
 import urllib.request
 from typing import Optional
 
-from common import StreamMedia
+from .common import StreamMedia
 
 
 class Processor:

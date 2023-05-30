@@ -9,7 +9,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from gphotospy.album import *
 
-from integrations.common import Integration
+from ..integrations.common import Integration
 
 service_name = "photoslibrary"
 version = "v1"

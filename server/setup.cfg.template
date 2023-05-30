@@ -1,0 +1,36 @@
+[metadata]
+name = kinetic-server
+version = 0.0.1
+author = Lou Kratz
+author-email = inbound at lou.dev
+home-page = https://github.com/lou-k/kinetic-photo
+description = "A picture frame that makes your photos move using AI"
+license = GPLv3
+license-file = LICENSE
+platform = any
+keywords = kinetic photo raspberry pi ai 
+classifiers =
+    Development Status :: 3 - Alpha
+    Intended Audience :: Developers
+    License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+    Operating System :: OS Independent
+    Programming Language :: Python
+    Programming Language :: Python :: 3.11
+    Topic :: Software Development :: Libraries :: Python Modules
+project_urls = 
+    Documentation = https://github.com/lou-k/kinetic-photo/blob/main/README.md
+    Bug Tracker = https://github.com/lou-k/kinetic-photo/issues
+    Changelog = https://github.com/lou-k/kinetic-photo/commits/main
+
+[options.entry_points]
+console_scripts =
+    kinetic-photo-cli = kinetic_server:cli.main
+[options.packages.find]
+where=src
+
+[options]
+package_dir=
+    =src/
+packages=find:
+include_package_data = True
+install_requires =	

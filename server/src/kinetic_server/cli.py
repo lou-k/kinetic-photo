@@ -5,13 +5,13 @@ import logging
 
 from dependency_injector.wiring import Provide, inject
 
-from containers import Container
-from integrations import IntegrationsApi, IntegrationType
-from pipelines import PipelineApi
-from streams import StreamsApi, StreamType
+from .containers import Container
+from .integrations import IntegrationsApi, IntegrationType
+from .pipelines import PipelineApi
+from .streams import StreamsApi, StreamType
 from disk_objectstore import Container as DiskContainer
-import rules
-import processors
+from .rules import list_rules
+from .processors import list_processors
 
 
 @inject
@@ -185,8 +185,8 @@ def pipelines(
             else:
                 logging.error(f"No pipeline run with id {args.run_id} found")
         case "add-step":
-            rule = rules.list_rules()[args.rule](**json.loads(args.rule_params))
-            processor = processors.list_processors()[args.processor](**json.loads(args.processor_params))
+            rule = list_rules()[args.rule](**json.loads(args.rule_params))
+            processor = list_processors()[args.processor](**json.loads(args.processor_params))
             new_pipeline = pipelines_api.add_step(args.pipeline_id, rule, processor)
             logging.info(f"Pipeline is now: {new_pipeline}")
         case "run":
@@ -212,9 +212,9 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
     log_parser.set_defaults(action="logs")
     steps_parser = subparsers.add_parser(name="add-step", help="Add a step to a pipeline")
     steps_parser.add_argument("pipeline_id", type=int, help="The pipeline to add the step to.")
-    steps_parser.add_argument("rule", type=str, help="The class name of the rule to create for this step.", choices=rules.list_rules().keys())
+    steps_parser.add_argument("rule", type=str, help="The class name of the rule to create for this step.", choices=list_rules().keys())
     steps_parser.add_argument("rule_params", type=str, help="A json object containing the parameters for this rule.")
-    steps_parser.add_argument("processor", type=str, help="The class name of the processor to create for this step.", choices=processors.list_processors().keys())
+    steps_parser.add_argument("processor", type=str, help="The class name of the processor to create for this step.", choices=list_processors().keys())
     steps_parser.add_argument("processor_params", type=str, help="A json object containing the parameters for this processor.")
     steps_parser.set_defaults(action="add-step")
     run_parser = subparsers.add_parser(name="run", help="Runs a pipeline")
@@ -226,7 +226,7 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
 
 
 
-if __name__ == "__main__":
+def main():
     container = Container()
     container.init_resources()
     container.wire(modules=[__name__])
@@ -241,3 +241,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.func(args)
+
+if __name__ == "__main__":
+    main()

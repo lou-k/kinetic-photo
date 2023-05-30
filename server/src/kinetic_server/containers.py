@@ -5,11 +5,11 @@ from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
 from disk_objectstore import Container as DiskContainer
 
-from content import ContentApi
-from db import ContentDb, IntegrationsDb, PipelineDb, StreamsDb, initialize
-from integrations import IntegrationsApi
-from pipelines import PipelineApi
-from streams import StreamsApi
+from .content import ContentApi
+from .db import ContentDb, IntegrationsDb, PipelineDb, StreamsDb, initialize
+from .integrations import IntegrationsApi
+from .pipelines import PipelineApi
+from .streams import StreamsApi
 
 
 def _initialize_objectstore(folder: str) -> DiskContainer:

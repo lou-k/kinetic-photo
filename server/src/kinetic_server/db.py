@@ -8,14 +8,14 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from common import Content, PipelineRun, PipelineStatus, Resolution
-from processors import (
+from .common import Content, PipelineRun, PipelineStatus, Resolution
+from .processors import (
     Processor,
     processor_adapter,
     processor_converter,
     list_processors,
 )
-from rules import Rule, rule_adapter, rule_converter, list_rules
+from .rules import Rule, rule_adapter, rule_converter, list_rules
 
 
 def _update_database_if_needed(connection: sqlite3.Connection) -> None:

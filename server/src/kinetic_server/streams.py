@@ -5,10 +5,10 @@ from typing import Optional
 from gphotospy.media import *
 from jsonpath_ng.ext import parse
 
-from common import Resolution, StreamMedia
-from db import StreamsDb
-from integrations import IntegrationsApi
-from integrations.common import Integration
+from .common import Resolution, StreamMedia
+from .db import StreamsDb
+from .integrations import IntegrationsApi
+from .integrations.common import Integration
 
 
 class StreamType(Enum):
