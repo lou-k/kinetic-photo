@@ -60,14 +60,13 @@ class StreamsApi:
         typ: StreamType,
         integration_id: Optional[int],
         params: Optional[dict],
-        filter: Optional[dict],
     ) -> int:
         if params:
             params = json.dumps(params)
-        return self._db.add(name, typ.name, integration_id, params, filter)
+        return self._db.add(name, typ.name, integration_id, params)
 
     def get(self, id: int) -> Stream:
-        id, name, typ, integration_id, params, filter = self._db.get(id)
+        id, name, typ, integration_id, params = self._db.get(id)
         typ = StreamType[typ]
 
         if params:
@@ -84,18 +83,13 @@ class StreamsApi:
                     raise Exception(
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
-                source = GooglePhotosAlbumStream(id, integration, **params)
+                return GooglePhotosAlbumStream(id, integration, **params)
             case StreamType.Google_Photos_Search:
                 if not integration:
                     raise Exception(
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
-                source = GooglePhotosSearchStream(id, integration, **params)
-
-        if filter:
-            return Filter(expression=filter, over=source)
-        else:
-            return source
+                return GooglePhotosSearchStream(id, integration, **params)
 
 
 class GooglePhotosStream(Stream):
@@ -112,7 +106,7 @@ class GooglePhotosStream(Stream):
                 width=int(m.metadata()["width"]), height=int(m.metadata()["height"])
             ),
             url=m.get_url(for_download=True),
-            external_id=m.val["id"],
+            identifier=m.val["id"],
             filename=m.val["filename"],
         )
 

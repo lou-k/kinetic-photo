@@ -7,7 +7,11 @@ from dependency_injector.wiring import Provide, inject
 
 from containers import Container
 from integrations import IntegrationsApi, IntegrationType
+from pipelines import PipelineApi
 from streams import StreamsApi, StreamType
+from disk_objectstore import Container as DiskContainer
+import rules
+import processors
 
 
 @inject
@@ -45,8 +49,7 @@ def streams(
                 name=args.name,
                 typ=typ,
                 integration_id=args.integration,
-                params=params,
-                filter=args.filter,
+                params=params
             )
             logging.info(f'Created stream {stream_id} with name "{args.name}"')
             show_head(stream_id, 5)
@@ -63,9 +66,6 @@ def streams_parser(app_subparsers: argparse._SubParsersAction):
         "params_file",
         help="A json file of arguments to the stream",
         type=str,
-    )
-    add_parser.add_argument(
-        "-f", "--filter", help="A json-path filter to apply over the stream media", type=str
     )
     add_parser.add_argument("name", help="What to name this stream")
     add_parser.add_argument(
@@ -162,6 +162,69 @@ def integrations_parser(app_subparsers: argparse._SubParsersAction):
 
     parser.set_defaults(func=integrations)
 
+@inject
+def pipelines(
+    args,
+    pipelines_api: PipelineApi = Provide[Container.pipeline_api],
+    objectstore: DiskContainer = Provide[Container.object_store],
+    streams_api: StreamsApi = Provide[Container.streams_api],
+) -> None:
+    match args.action:
+        case "list":
+            logging.info(pipelines_api.list())
+        case "add":
+            id = pipelines_api.create(name = args.name)
+            logging.info(f"Created pipeline {args.name} with id {id}")
+        case "list-runs":
+            logging.info(pipelines_api._db.list_runs())
+        case "logs":
+            run = pipelines_api._db.get_run(args.run_id)
+            if run:
+                log = objectstore.get_object_content(run.log_hash).decode()
+                print(log)
+            else:
+                logging.error(f"No pipeline run with id {args.run_id} found")
+        case "add-step":
+            rule = rules.list_rules()[args.rule](**json.loads(args.rule_params))
+            processor = processors.list_processors()[args.processor](**json.loads(args.processor_params))
+            new_pipeline = pipelines_api.add_step(args.pipeline_id, rule, processor)
+            logging.info(f"Pipeline is now: {new_pipeline}")
+        case "run":
+            pipeline = pipelines_api.get(args.pipeline_id)
+            stream = streams_api.get(args.stream_id)
+            pipeline(stream, args.limit)
+
+
+def pipelines_parser(app_subparsers: argparse._SubParsersAction):
+    parser = app_subparsers.add_parser(
+        name = "pipelines", help="Manage pipelines that create content."
+    )
+    subparsers = parser.add_subparsers(metavar="action", required=True)
+    add_parser = subparsers.add_parser(name="add", help="Add a pipeline")
+    add_parser.add_argument("name", help="What to name this pipeline")
+    add_parser.set_defaults(action="add")
+    list_parser = subparsers.add_parser(name="list", help="List pipelines")
+    list_parser.set_defaults(action="list")
+    list_runs_parser = subparsers.add_parser(name="list-runs", help="Show a pipeline's runs")
+    list_runs_parser.set_defaults(action="list-runs")
+    log_parser = subparsers.add_parser(name="logs", help="Show the log of a pipeline run")
+    log_parser.add_argument("run_id", type=int, help="The run id to show the logs for.")
+    log_parser.set_defaults(action="logs")
+    steps_parser = subparsers.add_parser(name="add-step", help="Add a step to a pipeline")
+    steps_parser.add_argument("pipeline_id", type=int, help="The pipeline to add the step to.")
+    steps_parser.add_argument("rule", type=str, help="The class name of the rule to create for this step.", choices=rules.list_rules().keys())
+    steps_parser.add_argument("rule_params", type=str, help="A json object containing the parameters for this rule.")
+    steps_parser.add_argument("processor", type=str, help="The class name of the processor to create for this step.", choices=processors.list_processors().keys())
+    steps_parser.add_argument("processor_params", type=str, help="A json object containing the parameters for this processor.")
+    steps_parser.set_defaults(action="add-step")
+    run_parser = subparsers.add_parser(name="run", help="Runs a pipeline")
+    run_parser.add_argument("pipeline_id", help="Which pipeline to run.")
+    run_parser.add_argument("stream_id", help="Which stream to run the pipeline on.")
+    run_parser.add_argument("-l", "--limit", type=int, default=None, help="Only process this many media.")
+    run_parser.set_defaults(action="run")
+    parser.set_defaults(func=pipelines)
+
+
 
 if __name__ == "__main__":
     container = Container()
@@ -174,6 +237,7 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(metavar="command:", required=True)
     integrations_parser(subparsers)
     streams_parser(subparsers)
+    pipelines_parser(subparsers)
 
     args = parser.parse_args()
     args.func(args)

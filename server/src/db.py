@@ -2,12 +2,20 @@ import glob
 import json
 import logging
 import os
-from shutil import _StrOrBytesPathT
 import sqlite3
-from typing import List, Optional
-from common import Content
+from datetime import datetime
+from typing import List, Optional, Tuple
 
 import pandas as pd
+
+from common import Content, PipelineRun, PipelineStatus, Resolution
+from processors import (
+    Processor,
+    processor_adapter,
+    processor_converter,
+    list_processors,
+)
+from rules import Rule, rule_adapter, rule_converter, list_rules
 
 
 def _update_database_if_needed(connection: sqlite3.Connection) -> None:
@@ -31,8 +39,28 @@ def _set_pragmas(connection: sqlite3.Connection) -> None:
     with connection:
         connection.execute("PRAGMA foreign_keys = ON")
 
+def pipeline_status_adapter(s: PipelineStatus) -> str:
+    return s.name
+
+
+def pipeline_status_converter(s: str) -> PipelineStatus:
+    return PipelineStatus[str(s, "utf-8")]
+
+def _setup_types() -> None:
+    sqlite3.register_adapter(Rule, rule_adapter)
+    for subclass in list_rules().values():
+        sqlite3.register_adapter(subclass, rule_adapter)
+    sqlite3.register_converter("Rule", rule_converter)
+    sqlite3.register_adapter(Processor, processor_adapter)
+    for subclass in list_processors().values():
+        sqlite3.register_adapter(subclass, processor_adapter)
+    sqlite3.register_converter("Processor", processor_converter)
+    sqlite3.register_adapter(PipelineStatus, pipeline_status_adapter)
+    sqlite3.register_converter("PipelineStatus", pipeline_status_converter)
+
 
 def initialize(**args) -> sqlite3.Connection:
+    _setup_types()
     con = sqlite3.connect(**args)
     _update_database_if_needed(con)
     _set_pragmas(con)
@@ -71,7 +99,6 @@ class StreamsDb:
         type: str,
         integration_id: Optional[int],
         params: Optional[dict],
-        filters: Optional[dict],
     ) -> int:
         """
         Saves a new streams to the datastore and returns it's id.
@@ -79,8 +106,8 @@ class StreamsDb:
         with self.connection:
             cursor = self.connection.cursor()
             cursor.execute(
-                "INSERT INTO streams(name, type, integration_id, params_json, filter) VALUES(?, ?, ?, ?, ?)",
-                (name, type, integration_id, params, filters),
+                "INSERT INTO streams(name, type, integration_id, params_json) VALUES(?, ?, ?, ?)",
+                (name, type, integration_id, params),
             )
             return cursor.lastrowid
 
@@ -124,7 +151,7 @@ class IntegrationsDb:
             return cursor.lastrowid
 
 
-class ContenDb:
+class ContentDb:
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
 
@@ -134,27 +161,32 @@ class ContenDb:
             metadata = json.dumps(c.metadata)
         with self.connection:
             self.connection.execute(
-                "REPLACE INTO content (id, created_at, height, width, external_id, metadata, stream_id) VALUES(?, ?, ?, ?, ?, ?, ?)",
-                c.id,
-                c.created_at,
-                c.height,
-                c.width,
-                c.external_id,
-                metadata,
-                c.stream_id,
+                "REPLACE INTO content (id, created_at, height, width, source_id, metadata, stream_id, processor) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    c.id,
+                    c.created_at,
+                    c.resolution.height,
+                    c.resolution.width,
+                    c.source_id,
+                    metadata,
+                    c.stream_id,
+                    c.processor,
+                )
             )
 
     def query(
         self,
         limit: int,
         stream_id: Optional[int] = None,
+        processor: Optional[str] = None,
         created_after: Optional[str] = None,
         created_before: Optional[str] = None,
     ) -> List[Content]:
         conditionals = [
             x
             for x in [
-                ("stream_id = ?", stream_id),
+                ("stream_id == ?", stream_id),
+                ("processor == ?", processor),
                 ("created_at > ?", created_after),
                 ("created_at < ?", created_before),
             ]
@@ -167,7 +199,7 @@ class ContenDb:
         query = "SELECT * FROM content "
         if len(conditionals):
             query += "WHERE " + where_clause
-        query += " LIMIT ?"
+        query += " ORDER BY created_at DESC LIMIT ?"
         parameters += (limit,)
 
         with self.connection:
@@ -176,19 +208,121 @@ class ContenDb:
             Content(
                 id=id,
                 created_at=created_at,
-                width=width,
-                height=height,
-                external_id=external_id,
-                metadata=metadata,
+                resolution=Resolution(width, height),
+                source_id=source_id,
+                metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
             )
             for (
                 id,
                 created_at,
-                width,
                 height,
-                external_id,
+                width,
+                source_id,
                 metadata,
                 stream_id,
             ) in results
         ]
+
+
+class PipelineDb:
+    def __init__(self, connection: sqlite3.Connection):
+        self.connection = connection
+
+    def list(self) -> pd.DataFrame:
+        """
+        Lists all pipelines in the datastore.
+        """
+        with self.connection:
+            return pd.read_sql_query(
+                "SELECT * FROM pipelines", self.connection, index_col="id"
+            )
+
+    def list_runs(self) -> pd.DataFrame:
+        """
+        Lists all pipeline runs in the datastore.
+        """
+        with self.connection:
+            return pd.read_sql_query(
+                "SELECT * FROM pipeline_runs", self.connection, index_col="id"
+            )
+
+    def get(
+        self, pipeline_id: int
+    ) -> Optional[Tuple[int, str, List[Tuple[Rule, Processor]]]]:
+        with self.connection:
+            res = self.connection.execute(
+                "SELECT * FROM pipelines WHERE id = ?", (pipeline_id,)
+            ).fetchone()
+        if res:
+            id, name = res
+            return (id, name, self.get_steps(pipeline_id))
+        else:
+            return None
+
+    def get_steps(self, pipeline_id: int) -> List[Tuple[Rule, Processor]]:
+        with self.connection:
+            return self.connection.execute(
+                "SELECT rule, processor FROM pipeline_steps WHERE pipeline_id = ?",
+                (pipeline_id,),
+            ).fetchall()
+
+    def create(self, name: str) -> int:
+        """
+        Creates a new pipeline
+        """
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                "INSERT INTO pipelines(name) VALUES(?)",
+                (name,),
+            )
+            return cursor.lastrowid
+
+    def add_step(self, pipeline_id: int, rule: Rule, processor: Processor) -> int:
+        """
+        Adds a step to a pipeline.
+        """
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                "INSERT INTO pipeline_steps(pipeline_id, rule, processor) VALUES(?, ?, ?)",
+                (pipeline_id, rule, processor),
+            )
+            return cursor.lastrowid
+
+    def get_runs(
+        self, pipeline_id: int, status: PipelineStatus, limit: int, offset: int
+    ) -> List[PipelineRun]:
+        with self.connection:
+            results = self.connection.execute(
+                "SELECT * FROM pipeline_runs WHERE pipeline_id = ? and status = ? ORDER BY completed_at DESC LIMIT ? OFFSET ?",
+                (pipeline_id, status, limit, offset),
+            ).fetchall()
+            if results:
+                return [PipelineRun(*r) for r in results]
+            else:
+                return None
+
+    def get_run(self, run_id: int) -> PipelineRun:
+        result = self.connection.execute(
+            "SELECT * FROM pipeline_runs WHERE id=?",
+            (run_id,),
+        ).fetchone()
+        return PipelineRun(*result) if result else None
+
+    def add_run(self, run: PipelineRun) -> int:
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                "INSERT INTO pipeline_runs(pipeline_id, log_hash, status, completed_at) VALUES(?, ?, ?, ?)",
+                (run.pipeline_id, run.log_hash, run.status, run.completed_at),
+            )
+            return cursor.lastrowid
+
+    def find_last_run(self, status: str, pipeline_id: int) -> Optional[PipelineRun]:
+        res = self.get_runs(pipeline_id, status, 1, 0)
+        if res:
+            return res[0]
+        else:
+            return None

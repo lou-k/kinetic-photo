@@ -1,2 +1,5 @@
 db:
   database: "file:dev.db"
+
+objectstore:
+  folder: objectstore-dev

@@ -3,10 +3,21 @@ import sqlite3
 
 from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
+from disk_objectstore import Container as DiskContainer
 
-from db import initialize, IntegrationsDb, StreamsDb
+from content import ContentApi
+from db import ContentDb, IntegrationsDb, PipelineDb, StreamsDb, initialize
 from integrations import IntegrationsApi
+from pipelines import PipelineApi
 from streams import StreamsApi
+
+
+def _initialize_objectstore(folder: str) -> DiskContainer:
+    ds = DiskContainer(folder)
+    if not ds.is_initialised:
+        logging.warning(f"Datastore {folder} doesn't exist, creating...")
+        ds.init_container(clear=False)
+    return ds
 
 
 class Container(containers.DeclarativeContainer):
@@ -21,8 +32,12 @@ class Container(containers.DeclarativeContainer):
 
     database_connection = providers.Resource(
         initialize,
-        database=config.db.database
+        database=config.db.database,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+    )
 
+    object_store = providers.Resource(
+        _initialize_objectstore, config.objectstore.folder
     )
 
     integrations_db = providers.Singleton(IntegrationsDb, database_connection)
@@ -30,6 +45,14 @@ class Container(containers.DeclarativeContainer):
 
     streams_db = providers.Singleton(StreamsDb, database_connection)
     streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api)
+
+    content_db = providers.Singleton(ContentDb, database_connection)
+    content_api = providers.Singleton(ContentApi, content_db, object_store)
+
+    pipeline_db = providers.Singleton(PipelineDb, database_connection)
+    pipeline_api = providers.Singleton(
+        PipelineApi, pipeline_db, content_api, object_store
+    )
 
 
 @inject

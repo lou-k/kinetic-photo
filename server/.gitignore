@@ -161,3 +161,4 @@ cython_debug/
 .secret/*
 dev.db
 .vscode
+objectstore-dev

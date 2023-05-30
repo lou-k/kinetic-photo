@@ -10,6 +10,7 @@ dependency-injector = {extras = ["yaml"], version = "*"}
 pandas = "*"
 dataclasses-json = "*"
 jsonpath-ng = "*"
+disk-objectstore = "*"
 
 [dev-packages]
 ipython = "*"

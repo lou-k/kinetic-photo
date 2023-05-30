@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 from dataclasses_json import config, dataclass_json
@@ -35,13 +36,8 @@ class StreamMedia:
     )
     resolution: Resolution  # The resolution of the media
     filename: str  # The orginal filename
-    external_id: Optional[
-        str
-    ] = None  # The id of the media used by the source provider -- i.e., google photos id.
+    identifier: str # The id of the media used by the source provider -- i.e., google photos id., or the hash if an upload.
     url: Optional[str] = None  # The url of the media (if remote)
-    object_hash: Optional[
-        str
-    ] = None  # The hash of the media (if stored locally in the object store)
 
 
 @dataclass_json
@@ -52,9 +48,28 @@ class Content:
     """
 
     id: str  # The hash of the file in the object store
-    created_at: str  # When this object was created
-    width: int  # Width of the video in pixels
-    height: int  # Height of the video in pixels
-    external_id: Optional[str] = None  # The id of the media used by the source provider -- i.e., google photos id.
+    created_at: datetime = field(  # When the media was created
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=datetime.fromisoformat,
+            mm_field=fields.DateTime(format="iso"),
+        )
+    )
+    processor: str # The processor that made this content
+    resolution: Resolution # Width and height of the video in pixels
+    source_id: Optional[str] = None  # The id of the media used by the source provider -- i.e., google photos id.
     metadata: Optional[dict] = None  # Other data that may be useful but is not garunteed to always be provided.
     stream_id: Optional[int] = None  # Which stream contained the original media
+
+
+class PipelineStatus(Enum):
+    Successful = "Successful"
+    Failed = "Failed"
+
+@dataclass
+class PipelineRun:
+    id: int
+    pipeline_id: int
+    log_hash: str
+    completed_at: datetime
+    status: PipelineStatus
