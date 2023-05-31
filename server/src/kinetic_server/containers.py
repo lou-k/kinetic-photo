@@ -9,7 +9,7 @@ from disk_objectstore import Container as DiskContainer
 from .content import ContentApi
 from .db import ContentDb, IntegrationsDb, PipelineDb, StreamsDb, initialize
 from .integrations import IntegrationsApi
-from .pipelines import PipelineApi
+from .pipelines import PipelineApi, PipelineLoggerFactory
 from .streams import StreamsApi
 
 
@@ -51,8 +51,13 @@ class Container(containers.DeclarativeContainer):
     content_api = providers.Singleton(ContentApi, content_db, object_store)
 
     pipeline_db = providers.Singleton(PipelineDb, database_connection)
+    pipeline_logger_factory = providers.Singleton(
+        PipelineLoggerFactory,
+        pipeline_db,
+        object_store
+    )
     pipeline_api = providers.Singleton(
-        PipelineApi, pipeline_db, content_api, object_store
+        PipelineApi, pipeline_db, content_api, pipeline_logger_factory
     )
 
 

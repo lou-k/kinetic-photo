@@ -14,6 +14,7 @@ class Processor:
     Each processor may have different input requirements or parameters, so they could reject photos
     based on their content, type, etc.
     """
+
     def __rep__(self) -> str:
         """Serialized this processor into a string.
 
@@ -51,6 +52,7 @@ class CopyVideos(Processor):
     Args:
         Processor (Processor): Superclass
     """
+
     def __init__(self, **kwargs):
         pass
 
@@ -110,7 +112,7 @@ def list_processors() -> dict:
         dict: A dictionary of processor class name -> class object
     """
     return {
-        name : obj
+        name: obj
         for name, obj in inspect.getmembers(sys.modules[__name__], inspect.isclass)
         if issubclass(obj, Processor) and name != "Processor"
     }

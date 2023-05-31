@@ -9,13 +9,9 @@ from typing import List, Optional, Tuple
 import pandas as pd
 
 from .common import Content, PipelineRun, PipelineStatus, Resolution
-from .processors import (
-    Processor,
-    processor_adapter,
-    processor_converter,
-    list_processors,
-)
-from .rules import Rule, rule_adapter, rule_converter, list_rules
+from .processors import (Processor, list_processors, processor_adapter,
+                         processor_converter)
+from .rules import Rule, list_rules, rule_adapter, rule_converter
 
 
 def _update_database_if_needed(connection: sqlite3.Connection) -> None:
@@ -39,12 +35,14 @@ def _set_pragmas(connection: sqlite3.Connection) -> None:
     with connection:
         connection.execute("PRAGMA foreign_keys = ON")
 
+
 def pipeline_status_adapter(s: PipelineStatus) -> str:
     return s.name
 
 
 def pipeline_status_converter(s: str) -> PipelineStatus:
     return PipelineStatus[str(s, "utf-8")]
+
 
 def _setup_types() -> None:
     sqlite3.register_adapter(Rule, rule_adapter)
@@ -171,7 +169,7 @@ class ContentDb:
                     metadata,
                     c.stream_id,
                     c.processor,
-                )
+                ),
             )
 
     def query(
@@ -292,13 +290,44 @@ class PipelineDb:
             return cursor.lastrowid
 
     def get_runs(
-        self, pipeline_id: int, status: PipelineStatus, limit: int, offset: int
+        self,
+        pipeline_id: Optional[int],
+        status: Optional[PipelineStatus],
+        bookmark: Optional[int],
+        limit: Optional[int],
     ) -> List[PipelineRun]:
+        """Queries the database for pipeline run results. Newer runs are at the top of the list.
+
+        Args:
+            pipeline_id (Optional[int]): The pipeline to see runs for. If None, all pipelines are considered.
+            status (Optional[PipelineStatus]): Only find runs that have this status.
+            bookmark (Optional[int]): Use for pagniation -- only show runs with a rowid less than this value.
+            limit (Optional[int]): Return at most this many runs.
+
+        Returns:
+            List[PipelineRun]: Any runs found from the database that match this criteria.
+        """
+        conditionals = [
+            x
+            for x in [
+                ("pipeline_id == ?", pipeline_id),
+                ("status == ?", status),
+                ("id < ?", bookmark),
+            ]
+            if x[1]
+        ]
+
+        query = "SELECT * FROM pipeline_runs"
+        if len(conditionals):
+            query += "WHERE " + (" AND ".join([c[0] for c in conditionals]))
+        query += " ORDER BY id DESC"
+        parameters = tuple([c[1] for c in conditionals])
+        if limit:
+            query += " LIMIT ?"
+            parameters += (limit,)
+
         with self.connection:
-            results = self.connection.execute(
-                "SELECT * FROM pipeline_runs WHERE pipeline_id = ? and status = ? ORDER BY completed_at DESC LIMIT ? OFFSET ?",
-                (pipeline_id, status, limit, offset),
-            ).fetchall()
+            results = self.connection.execute(query, parameters).fetchall()
             if results:
                 return [PipelineRun(*r) for r in results]
             else:
@@ -319,10 +348,3 @@ class PipelineDb:
                 (run.pipeline_id, run.log_hash, run.status, run.completed_at),
             )
             return cursor.lastrowid
-
-    def find_last_run(self, status: str, pipeline_id: int) -> Optional[PipelineRun]:
-        res = self.get_runs(pipeline_id, status, 1, 0)
-        if res:
-            return res[0]
-        else:
-            return None
