@@ -6,8 +6,10 @@ from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
 from disk_objectstore import Container as DiskContainer
 
+from kinetic_server.frames import FramesApi
+
 from .content import ContentApi
-from .db import ContentDb, IntegrationsDb, PipelineDb, StreamsDb, initialize
+from .db import ContentDb, FramesDb, IntegrationsDb, PipelineDb, StreamsDb, initialize
 from .integrations import IntegrationsApi
 from .pipelines import PipelineApi, PipelineLoggerFactory
 from .streams import StreamsApi
@@ -35,6 +37,7 @@ class Container(containers.DeclarativeContainer):
         initialize,
         database=config.db.database,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+        check_same_thread=config.db.check_same_thread
     )
 
     object_store = providers.Resource(
@@ -58,6 +61,16 @@ class Container(containers.DeclarativeContainer):
     )
     pipeline_api = providers.Singleton(
         PipelineApi, pipeline_db, content_api, pipeline_logger_factory
+    )
+
+    frames_db = providers.Singleton(
+        FramesDb,
+        database_connection
+    )
+    frames_api = providers.Singleton(
+        FramesApi,
+        frames_db,
+        content_api
     )
 
 

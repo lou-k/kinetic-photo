@@ -1,5 +1,7 @@
 db:
-  database: "file:dev.db"
+    database: "file:dev.db"
+    check_same_thread: False
+
 
 objectstore:
   folder: objectstore-dev

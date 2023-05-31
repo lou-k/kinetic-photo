@@ -73,3 +73,9 @@ class PipelineRun:
     log_hash: str
     completed_at: datetime
     status: PipelineStatus
+
+@dataclass
+class Frame:
+    id: str
+    name: str
+    options: dict

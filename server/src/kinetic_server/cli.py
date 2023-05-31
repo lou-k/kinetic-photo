@@ -5,6 +5,8 @@ import logging
 
 from dependency_injector.wiring import Provide, inject
 
+from kinetic_server.frames import FramesApi
+
 from .containers import Container
 from .integrations import IntegrationsApi, IntegrationType
 from .pipelines import PipelineApi
@@ -225,6 +227,41 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
     parser.set_defaults(func=pipelines)
 
 
+@inject
+def frames(
+    args,
+    frames_api: FramesApi = Provide[Container.frames_api]
+) -> None:
+    match args.action:
+        case "list":
+            logging.info(frames_api.list())
+        case "remove":
+            frames_api.remove(id = args.id)
+            logging.info(f"Frame {args.id} has been deleted")
+        case "add":
+            options = json.loads(args.options) if args.options else {}
+            frame = frames_api.add(
+                name = args.name,
+                **options
+            )
+            logging.info(f"Created new frame {frame.name} with id {frame.id}")
+
+def frames_parser(app_subparsers: argparse._SubParsersAction):
+    parser = app_subparsers.add_parser(
+        name = "frames", help="Manage frames"
+    )
+    subparsers = parser.add_subparsers(metavar="action", required=True)
+    add_parser = subparsers.add_parser(name="add", help="Add a frame")
+    add_parser.add_argument("name", help="What to name this frame")
+    add_parser.add_argument("-o", "--options", help="A json string of options for this frame")
+    add_parser.set_defaults(action="add")
+    list_parser = subparsers.add_parser(name="list", help="List frames")
+    list_parser.set_defaults(action="list")
+    remove_parser = subparsers.add_parser(name="remove", help="Deletes a frame")
+    remove_parser.set_defaults(action="remove")
+    remove_parser.add_argument("id", help="The id of the frame to remove")
+    parser.set_defaults(func=frames)
+
 
 def main():
     container = Container()
@@ -238,6 +275,7 @@ def main():
     integrations_parser(subparsers)
     streams_parser(subparsers)
     pipelines_parser(subparsers)
+    frames_parser(subparsers)
 
     args = parser.parse_args()
     args.func(args)

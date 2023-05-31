@@ -11,6 +11,8 @@ pandas = "*"
 dataclasses-json = "*"
 jsonpath-ng = "*"
 disk-objectstore = "*"
+flask = "*"
+waitress = "*"
 
 [dev-packages]
 ipython = "*"

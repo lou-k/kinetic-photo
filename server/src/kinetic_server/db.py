@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .common import Content, PipelineRun, PipelineStatus, Resolution
+from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution
 from .processors import (Processor, list_processors, processor_adapter,
                          processor_converter)
 from .rules import Rule, list_rules, rule_adapter, rule_converter
@@ -17,7 +17,7 @@ from .rules import Rule, list_rules, rule_adapter, rule_converter
 def _update_database_if_needed(connection: sqlite3.Connection) -> None:
     # Get the current schema version
     with connection:
-        current_version = connection.execute("PRAGMA schema_version;").fetchone()[0]
+        current_version = connection.execute("PRAGMA user_version;").fetchone()[0]
     logging.debug(f"Current version is {current_version}")
 
     # Update any schemas if necessary
@@ -25,10 +25,11 @@ def _update_database_if_needed(connection: sqlite3.Connection) -> None:
     for file_path in sorted(glob.glob(sql_dir + "/*.sql")):
         idx = int(os.path.basename(file_path)[0:3])
         if idx > current_version:
-            logging.warn(f"Updating database to version {idx} with {file_path}")
+            logging.warning(f"Updating database to version {idx} with {file_path}")
             with connection:
                 with open(file_path, "r") as sql_file:
                     connection.executescript(sql_file.read())
+                connection.execute("PRAGMA user_version = " + str(idx))
 
 
 def _set_pragmas(connection: sqlite3.Connection) -> None:
@@ -208,6 +209,7 @@ class ContentDb:
                 created_at=created_at,
                 resolution=Resolution(width, height),
                 source_id=source_id,
+                processor=processor,
                 metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
             )
@@ -219,8 +221,60 @@ class ContentDb:
                 source_id,
                 metadata,
                 stream_id,
+                processor
             ) in results
         ]
+
+class FramesDb:
+    def __init__(self, connection: sqlite3.Connection):
+        self.connection = connection
+    
+    def list(self) -> pd.DataFrame:
+        """
+        Lists all frames in the datastore.
+        """
+        with self.connection:
+            return pd.read_sql_query(
+                "SELECT * FROM frames", self.connection, index_col="id"
+            )
+    
+    def get(self, id: str) -> Frame:
+        with self.connection:
+            res = self.connection.execute(
+                "SELECT * FROM frames WHERE id = ?", (id,)
+            ).fetchone()
+            if res:
+                id, name, options = res
+                return Frame(
+                    id,
+                    name,
+                    json.loads(options)
+                )
+            else:
+                return None
+
+    def remove(self, id: str) -> None:
+        """
+        Removes a frame from the datastore.
+        """
+        with self.connection:
+            self.connection.execute("DELETE FROM frames WHERE id = ?", (id,))
+
+    def add(
+        self,
+        id: str,
+        name: str,
+        **options
+    ) -> Frame:
+        """
+        Saves a new frame to the datastore.
+        """
+        with self.connection:
+            self.connection.execute(
+                "INSERT INTO frames(id, name, options) VALUES(?, ?, ?)",
+                (id, name, json.dumps(options)),
+            )
+        return self.get(id)
 
 
 class PipelineDb:
