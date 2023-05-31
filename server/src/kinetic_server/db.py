@@ -9,8 +9,12 @@ from typing import List, Optional, Tuple
 import pandas as pd
 
 from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution
-from .processors import (Processor, list_processors, processor_adapter,
-                         processor_converter)
+from .processors import (
+    Processor,
+    list_processors,
+    processor_adapter,
+    processor_converter,
+)
 from .rules import Rule, list_rules, rule_adapter, rule_converter
 
 
@@ -58,12 +62,12 @@ def _setup_types() -> None:
     sqlite3.register_converter("PipelineStatus", pipeline_status_converter)
 
 
-def initialize(**args) -> sqlite3.Connection:
-    _setup_types()
-    con = sqlite3.connect(**args)
-    _update_database_if_needed(con)
-    _set_pragmas(con)
-    return con
+class WrappedConnection(sqlite3.Connection):
+    def __init__(self, **args):
+        _setup_types()
+        super().__init__(**args)
+        _update_database_if_needed(self)
+        _set_pragmas(self)
 
 
 class StreamsDb:
@@ -221,14 +225,15 @@ class ContentDb:
                 source_id,
                 metadata,
                 stream_id,
-                processor
+                processor,
             ) in results
         ]
+
 
 class FramesDb:
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
-    
+
     def list(self) -> pd.DataFrame:
         """
         Lists all frames in the datastore.
@@ -237,7 +242,7 @@ class FramesDb:
             return pd.read_sql_query(
                 "SELECT * FROM frames", self.connection, index_col="id"
             )
-    
+
     def get(self, id: str) -> Frame:
         with self.connection:
             res = self.connection.execute(
@@ -245,11 +250,7 @@ class FramesDb:
             ).fetchone()
             if res:
                 id, name, options = res
-                return Frame(
-                    id,
-                    name,
-                    json.loads(options)
-                )
+                return Frame(id, name, json.loads(options))
             else:
                 return None
 
@@ -260,12 +261,7 @@ class FramesDb:
         with self.connection:
             self.connection.execute("DELETE FROM frames WHERE id = ?", (id,))
 
-    def add(
-        self,
-        id: str,
-        name: str,
-        **options
-    ) -> Frame:
+    def add(self, id: str, name: str, **options) -> Frame:
         """
         Saves a new frame to the datastore.
         """
