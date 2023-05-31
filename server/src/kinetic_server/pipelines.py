@@ -5,6 +5,7 @@ from typing import Iterator, List, Tuple
 
 import pandas as pd
 from disk_objectstore import Container
+import tqdm
 
 from .common import PipelineRun, PipelineStatus, StreamMedia
 from .content import ContentApi
@@ -103,7 +104,7 @@ class Pipeline:
         with pipeline_logger as logger:
             num_successful = 0
             num_failed = 0
-            for i, media in enumerate(stream):
+            for i, media in tqdm.tqdm(enumerate(stream), total=limit):
                 # stop if limit is reached
                 if limit and i > limit:
                     logger.info(f"Processed {limit} pieces of media. Stopping...")

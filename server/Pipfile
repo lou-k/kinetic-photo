@@ -13,6 +13,7 @@ jsonpath-ng = "*"
 disk-objectstore = "*"
 flask = "*"
 waitress = "*"
+tqdm = "*"
 
 [dev-packages]
 ipython = "*"
