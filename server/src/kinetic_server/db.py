@@ -164,10 +164,11 @@ class ContentDb:
             metadata = json.dumps(c.metadata)
         with self.connection:
             self.connection.execute(
-                "REPLACE INTO content (id, created_at, height, width, source_id, metadata, stream_id, processor) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     c.id,
                     c.created_at,
+                    c.processed_at,
                     c.resolution.height if c.resolution else None,
                     c.resolution.width if c.resolution else None,
                     c.source_id,
@@ -211,6 +212,7 @@ class ContentDb:
             Content(
                 id=id,
                 created_at=created_at,
+                processed_at=processed_at,
                 resolution=Resolution(width, height) if width and height else None,
                 source_id=source_id,
                 processor=processor,
@@ -220,6 +222,7 @@ class ContentDb:
             for (
                 id,
                 created_at,
+                processed_at,
                 height,
                 width,
                 source_id,

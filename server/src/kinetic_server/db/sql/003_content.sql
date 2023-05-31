@@ -1,6 +1,7 @@
 CREATE TABLE content (
     id TEXT PRIMARY KEY,
     created_at timestamp,
+    processed_at timestamp,
     height int,
     width int,
     source_id TEXT,

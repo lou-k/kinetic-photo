@@ -128,6 +128,7 @@ class Pipeline:
                                     video_file=video_bytes,
                                     resolution=media.resolution,
                                     processor=processor.name,
+                                    created_at=media.created_at,
                                     external_id=media.identifier,
                                     stream_id=media.stream_id,
                                 )

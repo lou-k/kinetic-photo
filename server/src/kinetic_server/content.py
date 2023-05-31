@@ -14,8 +14,9 @@ class ContentApi:
     def save(
         self,
         video_file: bytes,
-        resolution: Resolution,
+        resolution: Optional[Resolution],
         processor: str,
+        created_at: datetime,
         external_id: Optional[str] = None,
         metadata: Optional[dict] = None,
         stream_id: Optional[int] = None,
@@ -23,7 +24,8 @@ class ContentApi:
         hash = self.objectstore.add_object(video_file)
         new_content = Content(
             id = hash,
-            created_at=datetime.now(),
+            created_at=created_at,
+            processed_at=datetime.now(),
             resolution=resolution,
             processor=processor,
             source_id=external_id,

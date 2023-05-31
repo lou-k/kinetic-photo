@@ -56,6 +56,13 @@ class Content:
         )
     )
     processor: str  # The processor that made this content
+    processed_at: datetime = field(  # When the media was created
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=datetime.fromisoformat,
+            mm_field=fields.DateTime(format="iso"),
+        )
+    )
     metadata: Optional[dict] = None  # Other data that may be useful
     resolution: Optional[Resolution] = None  # Width and height of the video in pixels
     source_id: Optional[
