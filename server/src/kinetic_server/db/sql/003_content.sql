@@ -1,8 +1,8 @@
 CREATE TABLE content (
     id TEXT PRIMARY KEY,
     created_at timestamp,
-    height int NOT NULL,
-    width int NOT NULL,
+    height int,
+    width int,
     source_id TEXT,
     metadata TEXT,
     stream_id INTEGER,

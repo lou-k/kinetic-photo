@@ -98,13 +98,17 @@ class GooglePhotosStream(Stream):
         self.integration = integration
 
     def __to_media__(self, m: MediaItem) -> StreamMedia:
+        metadata = m.metadata()
+        if "width" in metadata and "height" in metadata:
+            resolution = Resolution(int(metadata["width"]), int(metadata["height"]))
+        else:
+            resolution = None
+
         return StreamMedia(
             stream_id=self.id,
             is_video=m.is_video(),
             created_at=datetime.fromisoformat(m.metadata()["creationTime"]),
-            resolution=Resolution(
-                width=int(m.metadata()["width"]), height=int(m.metadata()["height"])
-            ),
+            resolution=resolution,
             url=m.get_url(for_download=True),
             identifier=m.val["id"],
             filename=m.val["filename"],

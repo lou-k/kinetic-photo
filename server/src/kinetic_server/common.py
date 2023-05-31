@@ -25,8 +25,6 @@ class StreamMedia:
     A piece of media produced by a stream
     """
 
-    stream_id: int  # Which stream this media came from
-    is_video: bool  # If True, this media is a video
     created_at: datetime = field(  # When the media was created
         metadata=config(
             encoder=datetime.isoformat,
@@ -34,9 +32,11 @@ class StreamMedia:
             mm_field=fields.DateTime(format="iso"),
         )
     )
-    resolution: Resolution  # The resolution of the media
     filename: str  # The orginal filename
-    identifier: str # The id of the media used by the source provider -- i.e., google photos id., or the hash if an upload.
+    identifier: str  # The id of the media used by the source provider -- i.e., google photos id., or the hash if an upload.
+    is_video: bool  # If True, this media is a video
+    resolution: Optional[Resolution]  # The resolution of the media
+    stream_id: int  # Which stream this media came from
     url: Optional[str] = None  # The url of the media (if remote)
 
 
@@ -55,16 +55,19 @@ class Content:
             mm_field=fields.DateTime(format="iso"),
         )
     )
-    processor: str # The processor that made this content
-    resolution: Resolution # Width and height of the video in pixels
-    source_id: Optional[str] = None  # The id of the media used by the source provider -- i.e., google photos id.
-    metadata: Optional[dict] = None  # Other data that may be useful but is not garunteed to always be provided.
+    processor: str  # The processor that made this content
+    metadata: Optional[dict] = None  # Other data that may be useful
+    resolution: Optional[Resolution] = None  # Width and height of the video in pixels
+    source_id: Optional[
+        str
+    ] = None  # The id used by the source provider -- i.e., google photos id.
     stream_id: Optional[int] = None  # Which stream contained the original media
 
 
 class PipelineStatus(Enum):
     Successful = "Successful"
     Failed = "Failed"
+
 
 @dataclass
 class PipelineRun:
@@ -73,6 +76,7 @@ class PipelineRun:
     log_hash: str
     completed_at: datetime
     status: PipelineStatus
+
 
 @dataclass
 class Frame:

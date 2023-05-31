@@ -164,8 +164,8 @@ class ContentDb:
                 (
                     c.id,
                     c.created_at,
-                    c.resolution.height,
-                    c.resolution.width,
+                    c.resolution.height if c.resolution else None,
+                    c.resolution.width if c.resolution else None,
                     c.source_id,
                     metadata,
                     c.stream_id,
@@ -207,7 +207,7 @@ class ContentDb:
             Content(
                 id=id,
                 created_at=created_at,
-                resolution=Resolution(width, height),
+                resolution=Resolution(width, height) if width and height else None,
                 source_id=source_id,
                 processor=processor,
                 metadata=json.loads(metadata) if metadata else None,
