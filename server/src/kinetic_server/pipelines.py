@@ -27,7 +27,7 @@ class PipelineLogger:
         Returns a logger that will be used to run this
         """
         self.logfile = NamedTemporaryFile()
-        self.logger = logging.getLogger("pipelines." + self._name)
+        self.logger = logging.getLogger()
         self.handler = logging.FileHandler(self.logfile.name)
         self.handler.setFormatter(
             logging.Formatter("[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s")
