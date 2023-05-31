@@ -37,23 +37,23 @@ class Container(containers.DeclarativeContainer):
         initialize,
         database=config.db.database,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
-        check_same_thread=config.db.check_same_thread
+        check_same_thread=False # TODO -- properly isolate the database to a single thread...
     )
 
     object_store = providers.Resource(
         _initialize_objectstore, config.objectstore.folder
     )
 
-    integrations_db = providers.Singleton(IntegrationsDb, database_connection)
+    integrations_db = providers.ThreadSafeSingleton(IntegrationsDb, database_connection)
     integrations_api = providers.Singleton(IntegrationsApi, integrations_db)
 
-    streams_db = providers.Singleton(StreamsDb, database_connection)
+    streams_db = providers.ThreadSafeSingleton(StreamsDb, database_connection)
     streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api)
 
-    content_db = providers.Singleton(ContentDb, database_connection)
+    content_db = providers.ThreadSafeSingleton(ContentDb, database_connection)
     content_api = providers.Singleton(ContentApi, content_db, object_store)
 
-    pipeline_db = providers.Singleton(PipelineDb, database_connection)
+    pipeline_db = providers.ThreadSafeSingleton(PipelineDb, database_connection)
     pipeline_logger_factory = providers.Singleton(
         PipelineLoggerFactory,
         pipeline_db,
@@ -63,7 +63,7 @@ class Container(containers.DeclarativeContainer):
         PipelineApi, pipeline_db, content_api, pipeline_logger_factory
     )
 
-    frames_db = providers.Singleton(
+    frames_db = providers.ThreadSafeSingleton(
         FramesDb,
         database_connection
     )
