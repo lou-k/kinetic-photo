@@ -25,12 +25,13 @@ project_urls =
 [options.entry_points]
 console_scripts =
     kinetic-photo-cli = kinetic_server:cli.main
+
 [options.packages.find]
 where=src
 
 [options]
+packages=find:
 package_dir=
     =src/
-packages=find:
 include_package_data = True
 install_requires =	

@@ -1,4 +1,5 @@
 import logging.config
+import os
 import sqlite3
 
 from dependency_injector import containers, providers
@@ -27,7 +28,7 @@ class Container(containers.DeclarativeContainer):
 
     logging = providers.Resource(
         logging.config.fileConfig,
-        fname="logging.ini",
+        fname=os.path.join(os.path.dirname(__file__), "logging.ini"),
     )
 
     database_connection = providers.Resource(

@@ -1,0 +1,5 @@
+db:
+  database: "file:/var/kinetic-photo/server.db"
+
+objectstore:
+  folder: /var/kinetic-photo/server-objectstore
