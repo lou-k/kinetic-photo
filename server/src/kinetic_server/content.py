@@ -22,6 +22,10 @@ class ContentApi:
         stream_id: Optional[int] = None,
     ) -> Content:
         hash = self.objectstore.add_object(video_file)
+        # sqllite3 throws when reading back a timestamp with timezone info
+        # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
+        # Here, we just make created_at match the local timezone to match how "processed_at" is stored.
+        created_at = created_at.astimezone().replace(tzinfo=None)
         new_content = Content(
             id = hash,
             created_at=created_at,

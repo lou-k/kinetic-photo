@@ -3,22 +3,42 @@ import json
 import logging
 import traceback
 from http.client import HTTPException
+from typing import List
 
 from dependency_injector.wiring import Provide, inject
 from flask import Flask, Response, jsonify, request
+from kinetic_server.common import Content, Frame
 
 from kinetic_server.content import ContentApi
 from kinetic_server.frames import FramesApi
 
 from .containers import Container
 
+from dataclasses_json import dataclass_json
+from dataclasses import dataclass
+
+#
+# API types
+#
+@dataclass_json
+@dataclass
+class GetFrameResult:
+    frame: Frame
+    content: List[Content]
+
+#
+# Endpoints
+#
 
 @inject
 def frame(
     id: str,
     frames_api: FramesApi = Provide[Container.frames_api],
 ):
-    return [c.to_dict() for c in frames_api.get_content_for(id)]
+    frame = frames_api.get(id)
+    content = frames_api.get_content_for(id)
+    resp = GetFrameResult(frame=frame, content=content)
+    return resp.to_dict()
 
 def create_server(environ=None, start_response=None):
     container = Container()

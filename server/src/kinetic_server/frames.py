@@ -16,6 +16,16 @@ class FramesApi:
         self._content_api = content_api
     
     def get_content_for(self, id: str, limit: Optional[int] = None) -> List[Content]:
+        """Materializes content for the provided kinetic photo frame.
+        Newer content appears at the top of the list.
+
+        Args:
+            id (str): The id of the frame.
+            limit (Optional[int], optional): If set, only return this number of results. Defaults to None.
+
+        Returns:
+            List[Content]: The content for this frame.
+        """
         frame = self._db.get(id)
         query_params = frame.options.get(FrameOptions.QUERY_PARAMS, {})
         limit = limit if limit else FrameOptions.DEFAULT_LIMIT
@@ -23,6 +33,17 @@ class FramesApi:
             limit=limit,
             **query_params
         )
+        
+    def get(self, id: str) -> Frame:
+        """Retrieves the frame with the provided identifier
+
+        Args:
+            id (str): The id of the frame to lookup
+
+        Returns:
+            Frame: The found frame
+        """
+        return self._db.get(id)
     
     def list(self):
         return self._db.list()

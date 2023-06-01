@@ -163,6 +163,13 @@ class ContentDb:
         if c.metadata:
             metadata = json.dumps(c.metadata)
         with self.connection:
+            # sqllite3 throws when reading back a timestamp with timezone info
+            # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
+            # Just check that the values passed don't have timezone info
+            if c.created_at.tzinfo is not None:
+                raise Exception(f"Due to an sqlite bug, created_at must have no timezone")
+            if c.processed_at.tzinfo is not None:
+                raise Exception(f"Due to an sqlite bug, processed_at must have no timezone")
             self.connection.execute(
                 "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
