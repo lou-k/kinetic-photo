@@ -1,0 +1,12 @@
+frame_id: b2b4851c-ffe4-11ed-8e72-a02942aaea38
+storage_directory: dev-media-cache
+playlist_file: playlist.m3u
+server: http://localhost:8080
+player_cmd:
+  - mplayer
+  - -fs
+  - -loop
+  - "0"
+  - -vf
+  - bmovl
+  - -playlist
