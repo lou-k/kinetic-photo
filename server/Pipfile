@@ -17,6 +17,7 @@ tqdm = "*"
 
 [dev-packages]
 ipython = "*"
+pdoc3 = "*"
 
 [requires]
 python_version = "3.11"
