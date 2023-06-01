@@ -6,8 +6,10 @@ from http.client import HTTPException
 from typing import List
 
 from dependency_injector.wiring import Provide, inject
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, render_template
 from kinetic_server.common import Content, Frame
+from disk_objectstore import Container as DiskContainer
+
 
 from kinetic_server.content import ContentApi
 from kinetic_server.frames import FramesApi
@@ -40,6 +42,19 @@ def frame(
     resp = GetFrameResult(frame=frame, content=content)
     return resp.to_dict()
 
+@inject
+def video(
+    id: str,
+    object_store: DiskContainer = Provide[Container.object_store]
+):
+    if object_store.has_object(id):
+        video_object = object_store.get_object_content(id)
+        # TODO -- ensure that the content type is correct - maybe store it in the objectstore?
+        return video_object, 200, {'Content-Type': 'video/mp4'}
+    else:
+        return {}, 404
+     
+
 def create_server(environ=None, start_response=None):
     container = Container()
     app = Flask(__name__)
@@ -47,6 +62,7 @@ def create_server(environ=None, start_response=None):
     app.container.init_resources()
     app.container.wire(modules=[__name__])
     app.add_url_rule("/frame/<id>", "frame", frame)
+    app.add_url_rule("/video/<id>", "video", video)
 
     return app
 
