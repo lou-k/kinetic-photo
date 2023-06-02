@@ -1,7 +1,7 @@
 import glob
 import logging
 import os
-from typing import Set
+from typing import Iterable, Set
 
 from tqdm import tqdm
 
@@ -35,7 +35,7 @@ def list_objects_on_disk(directory: str) -> Set[str]:
 
 
 def download_new_objects(
-    client: KineticClient, ids: Set[str], directory: str
+    client: KineticClient, ids: Iterable[str], directory: str
 ) -> Set[str]:
     """Downloads the kinetic photos (i.e., video files) to {{directory}}.
 
@@ -47,9 +47,8 @@ def download_new_objects(
     Returns:
         Set[str]: The identifiers that were successfully downloaded.
     """
-    ids = set(ids)
     on_disk = list_objects_on_disk(directory)
-    to_download = ids - on_disk
+    to_download = set(ids) - on_disk
     logging.info(f"There are {len(to_download)} photos to download.")
     kept = []
     for id in tqdm(to_download, total=len(to_download)):
@@ -57,7 +56,11 @@ def download_new_objects(
             kept.append(id)
     logging.info(f"Successfully downloaded {len(kept)}/{len(to_download)} photos.")
     kept = set(kept)
-    return kept.union(ids.intersection(on_disk))
+
+    result = kept.union(set(ids).intersection(on_disk))
+    
+    # keep the original order of the input ids
+    return [i for i in ids if i in result]
 
 
 def delete_old_files(ids_to_keep: Set[str], directory: str) -> None:
@@ -75,7 +78,7 @@ def delete_old_files(ids_to_keep: Set[str], directory: str) -> None:
         os.remove(os.path.join(directory, id))
 
 
-def create_vlc_playlist(filename: str, object_ids: Set[str], directory: str) -> None:
+def create_playlist(filename: str, object_ids: Set[str], directory: str) -> None:
     """Generates a playlist file for vlc containing all of the kinetic
     photos in {{object_ids}}
 

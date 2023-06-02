@@ -7,6 +7,8 @@ from typing import List
 
 from .config import DEFAULT_CONFIG_PATH, _load
 from .photo_storage import *
+import random
+import time
 
 
 def start_player(player_cmd: List[str], playlist_file: str):
@@ -14,6 +16,18 @@ def start_player(player_cmd: List[str], playlist_file: str):
     cmd = player_cmd + [playlist_file]
     return Popen(cmd, stderr=STDOUT)
 
+def reset_playlist(frame: dict, client: KineticClient, storage_directory: str, playlist_file: str):
+    object_ids = [c["id"] for c in frame["content"]]
+    object_ids = download_new_objects(client, object_ids, storage_directory)
+    options = frame['frame']['options']
+    if "shuffle" in options and options["shuffle"]:
+        random.shuffle(object_ids)
+    create_playlist(playlist_file, object_ids, storage_directory)
+    delete_old_files(object_ids, storage_directory)
+
+def stop_subprocess(sub):
+    sub.terminate()
+    sub.wait()
 
 def main():
     logging.config.fileConfig(
@@ -44,17 +58,28 @@ def main():
 
     frame_id = args.frame if args.frame else config["frame_id"]
     storage_directory = config["storage_directory"]
-    os.makedirs(storage_directory, exist_ok=True)
     playlist_file = config["playlist_file"]
     client = KineticClient(config["server"])
 
-    frame = client.frame(frame_id)
-    object_ids = [c["id"] for c in frame["content"]]
-    kept_ids = download_new_objects(client, object_ids, storage_directory)
-    create_vlc_playlist(playlist_file, kept_ids, storage_directory)
-    delete_old_files(kept_ids, storage_directory)
-    subprocess_pid = start_player(config["player_cmd"], playlist_file)
-    subprocess_pid.wait()
+    os.makedirs(storage_directory, exist_ok=True)
+
+    previous_frame = None
+    subprocess_pid = None
+
+    while True:
+        frame = client.frame(frame_id)
+        if frame != previous_frame:
+            previous_frame = frame        
+            reset_playlist(previous_frame, client, storage_directory, playlist_file)
+            if subprocess_pid:
+                stop_subprocess(subprocess_pid)
+            subprocess_pid = start_player(config["player_cmd"], playlist_file)
+        try:
+            time.sleep(config['poll_interval'])
+        except KeyboardInterrupt as e:
+            logging.warning(f"Caught iterrupt, exiting...")
+            break
+    stop_subprocess(subprocess_pid)
 
 
 if __name__ == "__main__":
