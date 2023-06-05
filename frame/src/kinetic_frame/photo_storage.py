@@ -5,7 +5,7 @@ from typing import Iterable, Set
 
 from tqdm import tqdm
 
-from src.kinetic_frame.client import KineticClient
+from .client import KineticClient
 
 
 def download_video(client: KineticClient, id: str, directory: str) -> bool:

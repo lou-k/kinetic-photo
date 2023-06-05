@@ -1,0 +1,10 @@
+frame_id: b2b4851c-ffe4-11ed-8e72-a02942aaea38
+storage_directory: media-cache
+playlist_file: playlist.m3u
+server: http://192.168.86.249:8080
+poll_interval: 300
+player_cmd:
+  - cvlc
+  - -f
+  - --loop
+  - --no-osd
