@@ -1,7 +1,12 @@
+# Put the id of your frame here
 frame_id: b2b4851c-ffe4-11ed-8e72-a02942aaea38
-storage_directory: media-cache
-playlist_file: playlist.m3u
-server: http://192.168.86.249:8080
+
+# enter your server address
+server: http://...
+
+# The following likely do not need to be changed
+storage_directory: /var/kinetic-photo/frame/storage/
+playlist_file: /var/kinetic-photo/frame/playlist.m3u
 poll_interval: 300
 player_cmd:
   - cvlc
