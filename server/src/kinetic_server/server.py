@@ -40,7 +40,7 @@ def frame(
 
 @inject
 def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
-    content = frames_api.get_content_for(id, limit=2)
+    content = frames_api.get_content_for(id)
     res = "#EXTM3U\n"
     for c in content:
         res += f"#EXINF:\n{request.url_root}video/{c.id}\n"
