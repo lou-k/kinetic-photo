@@ -58,7 +58,7 @@ def video(id: str, object_store: DiskContainer = Provide[Container.object_store]
         return {}, 404
 
 
-def create_server(environ=None, start_response=None):
+def create_server():
     container = Container()
     app = Flask(__name__)
     app.container = container

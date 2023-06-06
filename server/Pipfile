@@ -12,8 +12,8 @@ dataclasses-json = "*"
 jsonpath-ng = "*"
 disk-objectstore = "*"
 flask = "*"
-waitress = "*"
 tqdm = "*"
+uwsgi = "*"
 
 [dev-packages]
 ipython = "*"
