@@ -1,21 +1,15 @@
 import argparse
-import json
-import logging
-import traceback
 from dataclasses import dataclass
-from http.client import HTTPException
 from typing import List
 
 from dataclasses_json import dataclass_json
 from dependency_injector.wiring import Provide, inject
 from disk_objectstore import Container as DiskContainer
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, request
 
-from kinetic_server.common import Content, Frame
-from kinetic_server.content import ContentApi
-from kinetic_server.frames import FramesApi
-
+from .common import Content, Frame, initialize_objectstore
 from .containers import Container
+from .frames import FramesApi
 
 
 #
@@ -46,8 +40,7 @@ def frame(
 
 @inject
 def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
-    logging.info(f"Id is {id}")
-    content = frames_api.get_content_for(id)
+    content = frames_api.get_content_for(id, limit=2)
     res = "#EXTM3U\n"
     for c in content:
         res += f"#EXINF:\n{request.url_root}video/{c.id}\n"
@@ -71,6 +64,7 @@ def create_server(environ=None, start_response=None):
     app.container = container
     app.container.init_resources()
     app.container.wire(modules=[__name__])
+    initialize_objectstore(container.object_store.provided())
     app.add_url_rule("/frame/<id>", "frame", frame)
     app.add_url_rule("/video/<id>", "video", video)
     app.add_url_rule("/playlist/<id>.m3u8", "playlist", playlist)

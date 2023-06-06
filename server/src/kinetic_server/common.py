@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Optional
 
 from dataclasses_json import config, dataclass_json
+from disk_objectstore import Container as DiskContainer
 from marshmallow import fields
 
 
@@ -90,3 +91,8 @@ class Frame:
     id: str
     name: str
     options: dict
+
+
+def initialize_objectstore(container: DiskContainer) -> None:
+    if not container.is_initialised:
+        container.init_container(clear=False)

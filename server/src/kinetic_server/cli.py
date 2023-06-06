@@ -4,16 +4,17 @@ import json
 import logging
 
 from dependency_injector.wiring import Provide, inject
+from disk_objectstore import Container as DiskContainer
 
 from kinetic_server.frames import FramesApi
 
+from .common import initialize_objectstore
 from .containers import Container
 from .integrations import IntegrationsApi, IntegrationType
 from .pipelines import PipelineApi
-from .streams import StreamsApi, StreamType
-from disk_objectstore import Container as DiskContainer
-from .rules import list_rules
 from .processors import list_processors
+from .rules import list_rules
+from .streams import StreamsApi, StreamType
 
 
 @inject
@@ -40,7 +41,9 @@ def streams(
             typ = StreamType[args.type]
             if (
                 typ
-                in set([StreamType.Google_Photos_Album, StreamType.Google_Photos_Search])
+                in set(
+                    [StreamType.Google_Photos_Album, StreamType.Google_Photos_Search]
+                )
                 and not args.integration
             ):
                 raise Exception(
@@ -48,10 +51,7 @@ def streams(
                 )
 
             stream_id = streams_api.add(
-                name=args.name,
-                typ=typ,
-                integration_id=args.integration,
-                params=params
+                name=args.name, typ=typ, integration_id=args.integration, params=params
             )
             logging.info(f'Created stream {stream_id} with name "{args.name}"')
             show_head(stream_id, 5)
@@ -164,6 +164,7 @@ def integrations_parser(app_subparsers: argparse._SubParsersAction):
 
     parser.set_defaults(func=integrations)
 
+
 @inject
 def pipelines(
     args,
@@ -175,7 +176,7 @@ def pipelines(
         case "list":
             logging.info(pipelines_api.list())
         case "add":
-            id = pipelines_api.create(name = args.name)
+            id = pipelines_api.create(name=args.name)
             logging.info(f"Created pipeline {args.name} with id {id}")
         case "list-runs":
             logging.info(pipelines_api._db.list_runs())
@@ -188,7 +189,9 @@ def pipelines(
                 logging.error(f"No pipeline run with id {args.run_id} found")
         case "add-step":
             rule = list_rules()[args.rule](**json.loads(args.rule_params))
-            processor = list_processors()[args.processor](**json.loads(args.processor_params))
+            processor = list_processors()[args.processor](
+                **json.loads(args.processor_params)
+            )
             new_pipeline = pipelines_api.add_step(args.pipeline_id, rule, processor)
             logging.info(f"Pipeline is now: {new_pipeline}")
         case "run":
@@ -199,7 +202,7 @@ def pipelines(
 
 def pipelines_parser(app_subparsers: argparse._SubParsersAction):
     parser = app_subparsers.add_parser(
-        name = "pipelines", help="Manage pipelines that create content."
+        name="pipelines", help="Manage pipelines that create content."
     )
     subparsers = parser.add_subparsers(metavar="action", required=True)
     add_parser = subparsers.add_parser(name="add", help="Add a pipeline")
@@ -207,53 +210,76 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
     add_parser.set_defaults(action="add")
     list_parser = subparsers.add_parser(name="list", help="List pipelines")
     list_parser.set_defaults(action="list")
-    list_runs_parser = subparsers.add_parser(name="list-runs", help="Show a pipeline's runs")
+    list_runs_parser = subparsers.add_parser(
+        name="list-runs", help="Show a pipeline's runs"
+    )
     list_runs_parser.set_defaults(action="list-runs")
-    log_parser = subparsers.add_parser(name="logs", help="Show the log of a pipeline run")
+    log_parser = subparsers.add_parser(
+        name="logs", help="Show the log of a pipeline run"
+    )
     log_parser.add_argument("run_id", type=int, help="The run id to show the logs for.")
     log_parser.set_defaults(action="logs")
-    steps_parser = subparsers.add_parser(name="add-step", help="Add a step to a pipeline")
-    steps_parser.add_argument("pipeline_id", type=int, help="The pipeline to add the step to.")
-    steps_parser.add_argument("rule", type=str, help="The class name of the rule to create for this step.", choices=list_rules().keys())
-    steps_parser.add_argument("rule_params", type=str, help="A json object containing the parameters for this rule.")
-    steps_parser.add_argument("processor", type=str, help="The class name of the processor to create for this step.", choices=list_processors().keys())
-    steps_parser.add_argument("processor_params", type=str, help="A json object containing the parameters for this processor.")
+    steps_parser = subparsers.add_parser(
+        name="add-step", help="Add a step to a pipeline"
+    )
+    steps_parser.add_argument(
+        "pipeline_id", type=int, help="The pipeline to add the step to."
+    )
+    steps_parser.add_argument(
+        "rule",
+        type=str,
+        help="The class name of the rule to create for this step.",
+        choices=list_rules().keys(),
+    )
+    steps_parser.add_argument(
+        "rule_params",
+        type=str,
+        help="A json object containing the parameters for this rule.",
+    )
+    steps_parser.add_argument(
+        "processor",
+        type=str,
+        help="The class name of the processor to create for this step.",
+        choices=list_processors().keys(),
+    )
+    steps_parser.add_argument(
+        "processor_params",
+        type=str,
+        help="A json object containing the parameters for this processor.",
+    )
     steps_parser.set_defaults(action="add-step")
     run_parser = subparsers.add_parser(name="run", help="Runs a pipeline")
     run_parser.add_argument("pipeline_id", help="Which pipeline to run.")
     run_parser.add_argument("stream_id", help="Which stream to run the pipeline on.")
-    run_parser.add_argument("-l", "--limit", type=int, default=None, help="Only process this many media.")
+    run_parser.add_argument(
+        "-l", "--limit", type=int, default=None, help="Only process this many media."
+    )
     run_parser.set_defaults(action="run")
     parser.set_defaults(func=pipelines)
 
 
 @inject
-def frames(
-    args,
-    frames_api: FramesApi = Provide[Container.frames_api]
-) -> None:
+def frames(args, frames_api: FramesApi = Provide[Container.frames_api]) -> None:
     match args.action:
         case "list":
             logging.info(frames_api.list())
         case "remove":
-            frames_api.remove(id = args.id)
+            frames_api.remove(id=args.id)
             logging.info(f"Frame {args.id} has been deleted")
         case "add":
             options = json.loads(args.options) if args.options else {}
-            frame = frames_api.add(
-                name = args.name,
-                **options
-            )
+            frame = frames_api.add(name=args.name, **options)
             logging.info(f"Created new frame {frame.name} with id {frame.id}")
 
+
 def frames_parser(app_subparsers: argparse._SubParsersAction):
-    parser = app_subparsers.add_parser(
-        name = "frames", help="Manage frames"
-    )
+    parser = app_subparsers.add_parser(name="frames", help="Manage frames")
     subparsers = parser.add_subparsers(metavar="action", required=True)
     add_parser = subparsers.add_parser(name="add", help="Add a frame")
     add_parser.add_argument("name", help="What to name this frame")
-    add_parser.add_argument("-o", "--options", help="A json string of options for this frame")
+    add_parser.add_argument(
+        "-o", "--options", help="A json string of options for this frame"
+    )
     add_parser.set_defaults(action="add")
     list_parser = subparsers.add_parser(name="list", help="List frames")
     list_parser.set_defaults(action="list")
@@ -267,6 +293,7 @@ def main():
     container = Container()
     container.init_resources()
     container.wire(modules=[__name__])
+    initialize_objectstore(container.object_store.provided())
 
     parser = argparse.ArgumentParser(
         prog="kinetic-cli", description="Command line interface for kinetic photos."
@@ -279,6 +306,7 @@ def main():
 
     args = parser.parse_args()
     args.func(args)
+
 
 if __name__ == "__main__":
     main()
