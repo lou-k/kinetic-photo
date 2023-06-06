@@ -64,11 +64,22 @@ def main():
     os.makedirs(storage_directory, exist_ok=True)
 
     previous_frame = None
+    frame = None
     subprocess_pid = None
 
     while True:
-        frame = client.frame(frame_id)
-        if frame != previous_frame:
+        logging.info("trying to get frame...")
+        try:
+            frame = client.frame(frame_id)
+        except Exception as e:
+            if os.path.exists(playlist_file):
+                logging.warning(f"Could not get frame id {frame_id}, proceeding with cached version of {playlist_file}...", exc_info=e)
+                if not subprocess_pid:
+                    subprocess_pid = start_player(config["player_cmd"], playlist_file)
+            else:
+                logging.error(f"Could not get frame id {frame_id}, trying again after {config['poll_interval']}ms...", exc_info=e)
+
+        if frame and frame != previous_frame:
             previous_frame = frame        
             reset_playlist(previous_frame, client, storage_directory, playlist_file)
             if subprocess_pid:
