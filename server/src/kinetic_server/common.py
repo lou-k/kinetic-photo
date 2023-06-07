@@ -74,6 +74,10 @@ class PipelineStatus(Enum):
     Successful = "Successful"
     Failed = "Failed"
 
+class Orientation(Enum):
+    Tall = "Tall"
+    Wide = "Wide"
+    Square = "Square"
 
 @dataclass
 class PipelineRun:

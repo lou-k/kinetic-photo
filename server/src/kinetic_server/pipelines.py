@@ -7,7 +7,7 @@ import pandas as pd
 import tqdm
 from disk_objectstore import Container
 
-from .common import PipelineRun, PipelineStatus, Resolution, StreamMedia
+from .common import Orientation, PipelineRun, PipelineStatus, Resolution, StreamMedia
 from .content import ContentApi
 from .db import PipelineDb
 from .processors import Processor
@@ -171,6 +171,13 @@ class Pipeline:
                             else:
                                 if 'width' in media.metadata and 'height' in media.metadata:
                                     resolution = Resolution(int(media.metadata['width']), int(media.metadata['height']))
+                                    if resolution.width > resolution.height:
+                                        orientation = Orientation.Wide
+                                    elif resolution.height > resolution.width:
+                                        orientation = Orientation.Tall
+                                    else:
+                                        orientation = Orientation.Square
+                                    media.metadata['orientation'] = orientation.value
                                 else:
                                     resolution = None
                                 # Save the new content to the data store
