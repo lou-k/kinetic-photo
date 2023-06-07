@@ -1,3 +1,5 @@
+import copy
+
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -5,7 +7,7 @@ from typing import Optional
 from gphotospy.media import *
 from jsonpath_ng.ext import parse
 
-from .common import Resolution, StreamMedia
+from .common import StreamMedia
 from .db import StreamsDb
 from .integrations import IntegrationsApi
 from .integrations.common import Integration
@@ -98,20 +100,34 @@ class GooglePhotosStream(Stream):
         self.integration = integration
 
     def __to_media__(self, m: MediaItem) -> StreamMedia:
-        metadata = m.metadata()
-        if "width" in metadata and "height" in metadata:
-            resolution = Resolution(int(metadata["width"]), int(metadata["height"]))
-        else:
-            resolution = None
+        
+        # Metadata commonly returned from google has width, height, photo info (camera make, model, etc)
+        metadata = copy.deepcopy(m.metadata())
+
+        # Flatten the "photo" metadata into the og dict.
+        if 'photo' in metadata:
+            metadata.update(metadata['photo'])
+            del metadata['photo']
+
+        # Flatten the "video" metadata into the og dict.
+        if 'video' in metadata:
+            metadata.update(metadata['video'])
+            del metadata['video']
+        
+        # Include the filename in the meta data
+        metadata['filename'] = m.val['filename']
+
+        # remove the creation date
+        created_at = metadata["creationTime"]
+        del metadata["creationTime"]
 
         return StreamMedia(
-            stream_id=self.id,
-            is_video=m.is_video(),
-            created_at=datetime.fromisoformat(m.metadata()["creationTime"]),
-            resolution=resolution,
-            url=m.get_url(for_download=True),
+            created_at=datetime.fromisoformat(created_at),
             identifier=m.val["id"],
-            filename=m.val["filename"],
+            is_video=m.is_video(),
+            metadata=metadata,
+            stream_id=self.id,
+            url=m.get_url(for_download=True),
         )
 
     def __next__(self):

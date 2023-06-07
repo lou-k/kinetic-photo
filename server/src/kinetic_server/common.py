@@ -25,7 +25,6 @@ class StreamMedia:
     """
     A piece of media produced by a stream
     """
-
     created_at: datetime = field(  # When the media was created
         metadata=config(
             encoder=datetime.isoformat,
@@ -33,10 +32,9 @@ class StreamMedia:
             mm_field=fields.DateTime(format="iso"),
         )
     )
-    filename: str  # The orginal filename
     identifier: str  # The id of the media used by the source provider -- i.e., google photos id., or the hash if an upload.
     is_video: bool  # If True, this media is a video
-    resolution: Optional[Resolution]  # The resolution of the media
+    metadata: dict # A dictionary of metadata about this file. Contains resolution, filename, etc..
     stream_id: int  # Which stream this media came from
     url: Optional[str] = None  # The url of the media (if remote)
 

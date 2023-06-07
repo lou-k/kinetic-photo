@@ -23,6 +23,9 @@ class Processor:
         """
 
         return json.dumps({"type": self.__class__.__name__, "params": self.__dict__})
+    
+    def __str__(self) -> str:
+        return self.__rep__()
 
     def __call__(self, media: StreamMedia) -> Optional[bytes]:
         """Processes the provided media into a kinetic photo if possible, and returns the resulting video clip.

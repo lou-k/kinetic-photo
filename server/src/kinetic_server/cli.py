@@ -175,6 +175,8 @@ def pipelines(
     match args.action:
         case "list":
             logging.info(pipelines_api.list())
+        case "info":
+            logging.info(str(pipelines_api.get(args.pipeline_id)))
         case "add":
             id = pipelines_api.create(name=args.name)
             logging.info(f"Created pipeline {args.name} with id {id}")
@@ -255,6 +257,9 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
         "-l", "--limit", type=int, default=None, help="Only process this many media."
     )
     run_parser.set_defaults(action="run")
+    info_parser = subparsers.add_parser(name="info", help="Displays a pipeline")
+    info_parser.add_argument("pipeline_id", help="Which pipeline to display.")
+    info_parser.set_defaults(action="info")
     parser.set_defaults(func=pipelines)
 
 

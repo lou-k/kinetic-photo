@@ -34,6 +34,9 @@ class Rule:
             str: A json encoded dictionary containing this Rule's classname and parameters.
         """
         return json.dumps({"type": self.__class__.__name__, "params": self.__dict__})
+    
+    def __str__(self):
+        return self.__rep__()
 
 
 class FilterRule(Rule):

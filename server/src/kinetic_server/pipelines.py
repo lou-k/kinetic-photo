@@ -7,7 +7,7 @@ import pandas as pd
 import tqdm
 from disk_objectstore import Container
 
-from .common import PipelineRun, PipelineStatus, StreamMedia
+from .common import PipelineRun, PipelineStatus, Resolution, StreamMedia
 from .content import ContentApi
 from .db import PipelineDb
 from .processors import Processor
@@ -132,6 +132,9 @@ class Pipeline:
         self._logger_factory = logger_factory
         self._content_api = content_api
 
+    def __str__(self):
+        return f"Pipeline \"{self.name}\" ({self.id}).\n Steps:\n" + "\n".join([f"if {s[0]} then {s[1]}" for s in self.steps])
+
     def __call__(self, stream: Iterator[StreamMedia], limit: int = None) -> None:
         """Runs this Pipeline to convert stream media into kinetic photo content.
 
@@ -166,14 +169,19 @@ class Pipeline:
                                     f"Processor {processor} returned no bytes for media {media.identifier}..."
                                 )
                             else:
+                                if 'width' in media.metadata and 'height' in media.metadata:
+                                    resolution = Resolution(int(media.metadata['width']), int(media.metadata['height']))
+                                else:
+                                    resolution = None
                                 # Save the new content to the data store
                                 content = self._content_api.save(
                                     video_file=video_bytes,
-                                    resolution=media.resolution,
+                                    resolution=resolution,
                                     processor=processor.name,
                                     created_at=media.created_at,
                                     external_id=media.identifier,
                                     stream_id=media.stream_id,
+                                    metadata=media.metadata
                                 )
                                 logger.info(f"Created new content {content.id}!")
                             num_successful += 1
