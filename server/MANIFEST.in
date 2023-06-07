@@ -1,1 +1,2 @@
 include src/kinetic_server/logging.ini
+recursive-include src/kinetic_server/db *.sql
