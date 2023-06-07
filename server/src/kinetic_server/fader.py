@@ -3,8 +3,15 @@ import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Tuple
 
-
 def get_video_duration(filename: str) -> float:
+    """Retrieves the duration of a video file on disk
+
+    Args:
+        filename (str): The video file to compute the duration for.
+
+    Returns:
+        float: The duration of the video in seconds
+    """
     result = subprocess.run(
         [
             "ffprobe",
@@ -21,8 +28,22 @@ def get_video_duration(filename: str) -> float:
     )
     return float(result.stdout)
 
+@inject
+def fade_video(
+    video_bytes: bytes,
+    fade_duration: float = 1,
+    video_bitrate: int = 1200
+) -> Tuple[bytes, float]:
+    """Adds a black fading effect to the beginning and ending of a video.
 
-def fade_video(video_bytes: bytes, fade_duration: float = 1, video_bitrate: int = 1200) -> Tuple[bytes, float]:
+    Args:
+        video_bytes (bytes): The video to alter
+        fade_duration (float, optional): The number of seconds the fade shold be. Defaults to 1.
+        video_bitrate (int, optional): The video bitrate (in k) for the re-encoded video. Defaults to 1200.
+
+    Returns:
+        Tuple[bytes, float]: The bytes of the re-rendered video, and the video duration.
+    """
     with NamedTemporaryFile() as tmpfile:
         with open(tmpfile.name, "wb") as fout:
             fout.write(video_bytes)
