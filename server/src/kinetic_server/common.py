@@ -68,6 +68,7 @@ class Content:
         str
     ] = None  # The id used by the source provider -- i.e., google photos id.
     stream_id: Optional[int] = None  # Which stream contained the original media
+    faded_hash: Optional[str] = None # The object hash of the video with fades included
 
 
 class PipelineStatus(Enum):

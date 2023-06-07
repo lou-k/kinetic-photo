@@ -171,7 +171,7 @@ class ContentDb:
             if c.processed_at.tzinfo is not None:
                 raise Exception(f"Due to an sqlite bug, processed_at must have no timezone")
             self.connection.execute(
-                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor, faded_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     c.id,
                     c.created_at,
@@ -182,6 +182,7 @@ class ContentDb:
                     metadata,
                     c.stream_id,
                     c.processor,
+                    c.faded_hash
                 ),
             )
 
@@ -225,6 +226,7 @@ class ContentDb:
                 processor=processor,
                 metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
+                faded_hash=faded_hash
             )
             for (
                 id,
@@ -236,6 +238,7 @@ class ContentDb:
                 metadata,
                 stream_id,
                 processor,
+                faded_hash
             ) in results
         ]
 

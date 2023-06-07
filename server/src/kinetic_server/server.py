@@ -43,7 +43,9 @@ def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
     content = frames_api.get_content_for(id)
     res = "#EXTM3U\n"
     for c in content:
-        res += f"#EXINF:\n{request.url_root}video/{c.id}\n"
+        id = c.faded_hash if c.faded_hash else c.id
+        duration = str(int(c.metadata['duration'])) if c.metadata and 'duration' in c.metadata else ""
+        res += f"#EXINF:{duration}\n{request.url_root}video/{id}\n"
     res += "#EXT-X-ENDLIST"
     return res, 200, {"Content-Type": "video/mp4"}
 

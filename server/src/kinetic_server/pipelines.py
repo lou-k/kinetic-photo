@@ -11,6 +11,7 @@ from .common import Orientation, PipelineRun, PipelineStatus, Resolution, Stream
 from .content import ContentApi
 from .db import PipelineDb
 from .processors import Processor
+from .fader import fade_video
 from .rules import Rule
 
 
@@ -180,6 +181,10 @@ class Pipeline:
                                     media.metadata['orientation'] = orientation.value
                                 else:
                                     resolution = None
+                                
+                                faded_bytes, video_duration = fade_video(video_bytes)
+                                media.metadata['duration'] = video_duration
+
                                 # Save the new content to the data store
                                 content = self._content_api.save(
                                     video_file=video_bytes,
@@ -188,7 +193,8 @@ class Pipeline:
                                     created_at=media.created_at,
                                     external_id=media.identifier,
                                     stream_id=media.stream_id,
-                                    metadata=media.metadata
+                                    metadata=media.metadata,
+                                    faded_video=faded_bytes
                                 )
                                 logger.info(f"Created new content {content.id}!")
                             num_successful += 1
