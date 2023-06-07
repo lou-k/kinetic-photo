@@ -10,8 +10,8 @@ from disk_objectstore import Container
 from .common import Orientation, PipelineRun, PipelineStatus, Resolution, StreamMedia
 from .content import ContentApi
 from .db import PipelineDb
-from .processors import Processor
 from .fader import fade_video
+from .processors import Processor
 from .rules import Rule
 
 
@@ -24,9 +24,10 @@ class PipelineLogger:
 
     with pipeline_logger as logger:
         logger.info....
-    
+
     Once the `with` clause completes the log is persisted to the data and object store.
     """
+
     def __init__(
         self, db: PipelineDb, objectstore: Container, pipeline_id: int, name: str
     ):
@@ -91,6 +92,7 @@ class PipelineLoggerFactory:
     """A factory for PipelineLoggers.
     This factory helps pipelines avoid passing around the PipelineDb and Container references.
     """
+
     def __init__(self, db: PipelineDb, object_store: Container):
         self._db = db
         self._object_store = object_store
@@ -104,12 +106,13 @@ class Pipeline:
     a collection of (Rule, Processor) pairs that can create video clips for different kinds of content.
 
     Each piece of media is evaluated against each Rule and, if it complies, is passed to the corresponding Processor.
-    If the Processor is successful and creates a video file, it is added to the Content database via the ContentApi 
+    If the Processor is successful and creates a video file, it is added to the Content database via the ContentApi
     and will be available to all Kinetic Frames.
 
     Each time a pipeline is invoked via __call__, it's log and resulting status will be saved to the "pipeline_runs" table in the database.
     See the PipelineApi for how to access these results.
     """
+
     def __init__(
         self,
         id: int,
@@ -134,14 +137,16 @@ class Pipeline:
         self._content_api = content_api
 
     def __str__(self):
-        return f"Pipeline \"{self.name}\" ({self.id}).\n Steps:\n" + "\n".join([f"if {s[0]} then {s[1]}" for s in self.steps])
+        return f'Pipeline "{self.name}" ({self.id}).\n Steps:\n' + "\n".join(
+            [f"if {s[0]} then {s[1]}" for s in self.steps]
+        )
 
     def __call__(self, stream: Iterator[StreamMedia], limit: int = None) -> None:
         """Runs this Pipeline to convert stream media into kinetic photo content.
 
         Args:
             stream (Iterator[StreamMedia]): An iterator of media items to process.
-            limit (int, optional): If set, only process this many items. 
+            limit (int, optional): If set, only process this many items.
 
         Raises:
             Exception: If the pipeline fails all media an exception is thrown.
@@ -162,48 +167,63 @@ class Pipeline:
                         logger.info(
                             f"Processing media {media.identifier} with processor {processor.name}..."
                         )
-                        try:
-                            # Process the media into a video file
-                            video_bytes = processor(media)
-                            if not video_bytes:
-                                logger.warning(
-                                    f"Processor {processor} returned no bytes for media {media.identifier}..."
-                                )
-                            else:
-                                if 'width' in media.metadata and 'height' in media.metadata:
-                                    resolution = Resolution(int(media.metadata['width']), int(media.metadata['height']))
-                                    if resolution.width > resolution.height:
-                                        orientation = Orientation.Wide
-                                    elif resolution.height > resolution.width:
-                                        orientation = Orientation.Tall
-                                    else:
-                                        orientation = Orientation.Square
-                                    media.metadata['orientation'] = orientation.value
-                                else:
-                                    resolution = None
-                                
-                                faded_bytes, video_duration = fade_video(video_bytes)
-                                media.metadata['duration'] = video_duration
-
-                                # Save the new content to the data store
-                                content = self._content_api.save(
-                                    video_file=video_bytes,
-                                    resolution=resolution,
-                                    processor=processor.name,
-                                    created_at=media.created_at,
-                                    external_id=media.identifier,
-                                    stream_id=media.stream_id,
-                                    metadata=media.metadata,
-                                    faded_video=faded_bytes
-                                )
-                                logger.info(f"Created new content {content.id}!")
-                            num_successful += 1
-                        except Exception as e:
-                            logger.error(
-                                f"Failed to process media {media.identifier} with processor {processor}, pipeline run will be marked as failed.",
-                                e,
+                        if len(self._content_api.query(1, source_id=media.identifier)):
+                            logging.info(
+                                f"Media {media.identifier} has already been processed. Skipping..."
                             )
-                            num_failed += 1
+                        else:
+                            try:
+                                # Process the media into a video file
+                                video_bytes = processor(media)
+                                if not video_bytes:
+                                    logger.warning(
+                                        f"Processor {processor} returned no bytes for media {media.identifier}..."
+                                    )
+                                else:
+                                    if (
+                                        "width" in media.metadata
+                                        and "height" in media.metadata
+                                    ):
+                                        resolution = Resolution(
+                                            int(media.metadata["width"]),
+                                            int(media.metadata["height"]),
+                                        )
+                                        if resolution.width > resolution.height:
+                                            orientation = Orientation.Wide
+                                        elif resolution.height > resolution.width:
+                                            orientation = Orientation.Tall
+                                        else:
+                                            orientation = Orientation.Square
+                                        media.metadata[
+                                            "orientation"
+                                        ] = orientation.value
+                                    else:
+                                        resolution = None
+
+                                    faded_bytes, video_duration = fade_video(
+                                        video_bytes
+                                    )
+                                    media.metadata["duration"] = video_duration
+
+                                    # Save the new content to the data store
+                                    content = self._content_api.save(
+                                        video_file=video_bytes,
+                                        resolution=resolution,
+                                        processor=processor.name,
+                                        created_at=media.created_at,
+                                        external_id=media.identifier,
+                                        stream_id=media.stream_id,
+                                        metadata=media.metadata,
+                                        faded_video=faded_bytes,
+                                    )
+                                    logger.info(f"Created new content {content.id}!")
+                                num_successful += 1
+                            except Exception as e:
+                                logger.error(
+                                    f"Failed to process media {media.identifier} with processor {processor}, pipeline run will be marked as failed.",
+                                    e,
+                                )
+                                num_failed += 1
             if num_failed > 0 and num_successful == 0:
                 # The processor is consistently failing, throw here to fail the pipeline run
                 raise Exception(
@@ -212,8 +232,8 @@ class Pipeline:
 
 
 class PipelineApi:
-    """Provides programatic tools for managing pipelines.
-    """
+    """Provides programatic tools for managing pipelines."""
+
     def __init__(
         self,
         db: PipelineDb,

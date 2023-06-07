@@ -3,6 +3,7 @@ import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Tuple
 
+
 def get_video_duration(filename: str) -> float:
     """Retrieves the duration of a video file on disk
 
@@ -28,11 +29,9 @@ def get_video_duration(filename: str) -> float:
     )
     return float(result.stdout)
 
-@inject
+
 def fade_video(
-    video_bytes: bytes,
-    fade_duration: float = 1,
-    video_bitrate: int = 1200
+    video_bytes: bytes, fade_duration: float = 1, video_bitrate: int = 1200
 ) -> Tuple[bytes, float]:
     """Adds a black fading effect to the beginning and ending of a video.
 

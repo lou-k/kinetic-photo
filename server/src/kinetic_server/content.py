@@ -44,13 +44,14 @@ class ContentApi:
         )
         self.db.save(new_content)
         return new_content
-
+    
     def query(
         self,
         limit: int,
+        source_id: Optional[str] = None,
         stream_id: Optional[int] = None,
         processor: Optional[str] = None,
         created_after: Optional[str] = None,
         created_before: Optional[str] = None,
     ) -> List[Content]:
-        return self.db.query(limit, stream_id, processor, created_after, created_before)
+        return self.db.query(limit, source_id, stream_id, processor, created_after, created_before)

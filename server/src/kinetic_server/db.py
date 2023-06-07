@@ -189,6 +189,7 @@ class ContentDb:
     def query(
         self,
         limit: int,
+        source_id: Optional[str] = None,
         stream_id: Optional[int] = None,
         processor: Optional[str] = None,
         created_after: Optional[str] = None,
@@ -197,6 +198,7 @@ class ContentDb:
         conditionals = [
             x
             for x in [
+                ("source_id == ?", source_id),
                 ("stream_id == ?", stream_id),
                 ("processor == ?", processor),
                 ("created_at > ?", created_after),
