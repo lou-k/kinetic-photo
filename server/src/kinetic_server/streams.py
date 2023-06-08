@@ -1,5 +1,5 @@
 import copy
-
+import sys
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -7,15 +7,17 @@ from typing import Optional
 from gphotospy.media import *
 from jsonpath_ng.ext import parse
 
-from .common import StreamMedia
+from .common import StreamMedia, Upload
 from .db import StreamsDb
 from .integrations import IntegrationsApi
 from .integrations.common import Integration
+from .uploads import UploadsApi
 
 
 class StreamType(Enum):
     Google_Photos_Album = 1
     Google_Photos_Search = 2
+    Uploads = 3
 
 
 class Stream:
@@ -46,9 +48,12 @@ class Filter:
 
 
 class StreamsApi:
-    def __init__(self, db: StreamsDb, integrations_api: IntegrationsApi):
+    def __init__(
+        self, db: StreamsDb, integrations_api: IntegrationsApi, uploads_api: UploadsApi
+    ):
         self._db = db
         self._integrations = integrations_api
+        self._uploads_api = uploads_api
 
     def remove(self, id: int) -> None:
         self._db.remove(id)
@@ -92,6 +97,8 @@ class StreamsApi:
                         f'Stream {id} with name "{name}" should have a google photos integration.'
                     )
                 return GooglePhotosSearchStream(id, integration, **params)
+            case StreamType.Uploads:
+                return UploadsStream(id, self._uploads_api, **params)
 
 
 class GooglePhotosStream(Stream):
@@ -100,22 +107,21 @@ class GooglePhotosStream(Stream):
         self.integration = integration
 
     def __to_media__(self, m: MediaItem) -> StreamMedia:
-        
         # Metadata commonly returned from google has width, height, photo info (camera make, model, etc)
         metadata = copy.deepcopy(m.metadata())
 
         # Flatten the "photo" metadata into the og dict.
-        if 'photo' in metadata:
-            metadata.update(metadata['photo'])
-            del metadata['photo']
+        if "photo" in metadata:
+            metadata.update(metadata["photo"])
+            del metadata["photo"]
 
         # Flatten the "video" metadata into the og dict.
-        if 'video' in metadata:
-            metadata.update(metadata['video'])
-            del metadata['video']
-        
+        if "video" in metadata:
+            metadata.update(metadata["video"])
+            del metadata["video"]
+
         # Include the filename in the meta data
-        metadata['filename'] = m.val['filename']
+        metadata["filename"] = m.val["filename"]
 
         # remove the creation date
         created_at = metadata["creationTime"]
@@ -167,3 +173,28 @@ class GooglePhotosSearchStream(GooglePhotosStream):
         with self.integration as gp:
             self.iterator = Media(gp).search(self.filter, self.exclude)
         return self
+
+
+class UploadsStream(Stream):
+    """A stream of uploaded media."""
+
+    def __init__(self, id: int, uploads: UploadsApi):
+        self.id = id
+        self.api = uploads
+
+    def __iter__(self):
+        self.iterator = self.api.query(limit=sys.maxint)
+        return self
+
+    def __to_media__(self, upload: Upload) -> StreamMedia:
+        return StreamMedia(
+            created_at=upload.created_at,
+            identifier=upload.id,
+            is_video=upload.content_type.startswith("video"),
+            metadata=upload.metadata,
+            stream_id=self.id,
+            url=None,
+        )
+
+    def __next__(self):
+        return self.__to_media__(next(self.iterator))

@@ -4,7 +4,7 @@ FROM python:${PYTHON_VERSION}-slim-buster
 WORKDIR /root
 
 RUN apt-get update && \
-    apt-get install -y build-essential ffmpeg && \
+    apt-get install -y build-essential ffmpeg libmagic1 && \
     rm -rf /var/cache/apt /var/lib/apt/lists
 
 # Install the server package from source

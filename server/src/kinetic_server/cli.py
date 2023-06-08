@@ -6,15 +6,15 @@ import logging
 from dependency_injector.wiring import Provide, inject
 from disk_objectstore import Container as DiskContainer
 
-from kinetic_server.frames import FramesApi
-
 from .common import initialize_objectstore
 from .containers import Container
+from .frames import FramesApi
 from .integrations import IntegrationsApi, IntegrationType
 from .pipelines import PipelineApi
 from .processors import list_processors
 from .rules import list_rules
 from .streams import StreamsApi, StreamType
+from .uploads import UploadsApi
 
 
 @inject
@@ -294,6 +294,35 @@ def frames_parser(app_subparsers: argparse._SubParsersAction):
     parser.set_defaults(func=frames)
 
 
+@inject
+def uploads(args, uploads_api: UploadsApi = Provide[Container.uploads_api]) -> None:
+    match args.action:
+        case "list":
+            logging.info(uploads_api.list())
+        case "remove":
+            uploads_api.remove(id=args.id)
+            logging.info(f"Upload {args.id} has been deleted")
+        case "add":
+            with open(args.file, "rb") as fin:
+                file_bytes = fin.read()
+            result = uploads_api.add(file_bytes)
+            logging.info("Resulting upload is:\n" + str(result.to_dict()))
+
+
+def uploads_parser(app_subparsers: argparse._SubParsersAction):
+    parser = app_subparsers.add_parser(name="uploads", help="Manage uploads.")
+    subparsers = parser.add_subparsers(metavar="action", required=True)
+    add_parser = subparsers.add_parser(name="add", help="Injest some new media")
+    add_parser.add_argument("file", help="The file to injest")
+    add_parser.set_defaults(action="add")
+    list_parser = subparsers.add_parser(name="list", help="List uploads")
+    list_parser.set_defaults(action="list")
+    remove_parser = subparsers.add_parser(name="remove", help="Deletes an upload")
+    remove_parser.set_defaults(action="remove")
+    remove_parser.add_argument("id", help="The id of the upload to remove")
+    parser.set_defaults(func=uploads)
+
+
 def main():
     container = Container()
     container.init_resources()
@@ -308,6 +337,7 @@ def main():
     streams_parser(subparsers)
     pipelines_parser(subparsers)
     frames_parser(subparsers)
+    uploads_parser(subparsers)
 
     args = parser.parse_args()
     args.func(args)

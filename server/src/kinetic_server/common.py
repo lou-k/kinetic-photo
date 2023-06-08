@@ -70,7 +70,6 @@ class Content:
     stream_id: Optional[int] = None  # Which stream contained the original media
     faded_hash: Optional[str] = None # The object hash of the video with fades included
 
-
 class PipelineStatus(Enum):
     Successful = "Successful"
     Failed = "Failed"
@@ -94,6 +93,30 @@ class Frame:
     id: str
     name: str
     options: dict
+
+
+@dataclass_json
+@dataclass
+class Upload:
+    """A piece of media that was manually uploaded by the user.
+    """
+    id: str  # The hash of the file in the object store
+    created_at: datetime = field(  # When the media was created
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=datetime.fromisoformat,
+            mm_field=fields.DateTime(format="iso"),
+        )
+    )
+    uploaded_at: datetime = field(  # When the media was uploaded
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=datetime.fromisoformat,
+            mm_field=fields.DateTime(format="iso"),
+        )
+    )
+    content_type: str # The mime type of this file
+    metadata: Optional[dict]  # Other data that may be useful such as resolution, etc
 
 
 def initialize_objectstore(container: DiskContainer) -> None:

@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution
+from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution, Upload
 from .processors import (
     Processor,
     list_processors,
@@ -413,3 +413,124 @@ class PipelineDb:
                 (run.pipeline_id, run.log_hash, run.status, run.completed_at),
             )
             return cursor.lastrowid
+
+
+class UploadsDb:
+    def __init__(self, connection: sqlite3.Connection):
+        self.connection = connection
+
+    def list(self) -> pd.DataFrame:
+        """
+        Lists all uploads in the datastore.
+        """
+        with self.connection:
+            return pd.read_sql_query(
+                "SELECT * FROM uploads", self.connection, index_col="id"
+            )
+
+    def get(self, id: str) -> Optional[Upload]:
+        """Looks up a single upload by id
+
+        Args:
+            id (str): The upload to look up
+
+        Returns:
+            Optional[Upload]: The upload if found or None otherwise
+        """
+        res =  self.query(1, id = id)
+        if len(res):
+            return res[0]
+        else:
+            return None
+
+    def remove(self, id: str) -> None:
+        """
+        Removes an upload from the datastore.
+        """
+        with self.connection:
+            self.connection.execute("DELETE FROM uploads WHERE id = ?", (id,))
+
+    def save(self, u: Upload):
+        """Stores a new upload in the database
+
+        Args:
+            u (Upload): The upload to store
+        """
+        metadata = u.metadata
+        if u.metadata:
+            metadata = json.dumps(u.metadata)
+        with self.connection:
+            # sqllite3 throws when reading back a timestamp with timezone info
+            # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
+            # Just check that the values passed don't have timezone info
+            if u.created_at.tzinfo is not None:
+                raise Exception(f"Due to an sqlite bug, created_at must have no timezone")
+            if u.uploaded_at.tzinfo is not None:
+                raise Exception(f"Due to an sqlite bug, uploaded_at must have no timezone")
+            self.connection.execute(
+                "REPLACE INTO uploads (id, created_at, uploaded_at, metadata, content_type) VALUES(?, ?, ?, ?, ?)",
+                (
+                    u.id,
+                    u.created_at,
+                    u.uploaded_at,
+                    metadata,
+                    u.content_type
+                ),
+            )
+
+    def query(
+        self,
+        limit: int,
+        created_after: Optional[str] = None,
+        created_before: Optional[str] = None,
+        uploaded_after: Optional[str] = None,
+        uploaded_before: Optional[str] = None,
+        id: Optional[str] = None
+    ) -> List[Upload]:
+        """Queries for uploads from the database.
+
+        Args:
+            limit (int): Return at most this many uploads.
+
+        Returns:
+            List[Upload]: Any uploads that were found.
+        """
+        conditionals = [
+            x
+            for x in [
+                ("id == ", id),
+                ("created_at > ?", created_after),
+                ("created_at < ?", created_before),
+                ("uploaded_at > ?", uploaded_after),
+                ("uploaded_at < ?", uploaded_before),
+            ]
+            if x[1]
+        ]
+
+        where_clause = " AND ".join([c[0] for c in conditionals])
+        parameters = tuple([c[1] for c in conditionals])
+
+        query = "SELECT * FROM uploads "
+        if len(conditionals):
+            query += "WHERE " + where_clause
+        query += " ORDER BY created_at DESC LIMIT ?"
+        parameters += (limit,)
+
+        with self.connection:
+            results = self.connection.execute(query, parameters).fetchall()
+        return [
+            Upload(
+                id=id,
+                created_at=created_at,
+                uploaded_at=uploaded_at,
+                metadata=json.loads(metadata) if metadata else None,
+                content_type = content_type
+            )
+            for (
+                id,
+                created_at,
+                uploaded_at,
+                metadata,
+                content_type
+            ) in results
+        ]

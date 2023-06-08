@@ -7,9 +7,10 @@ from dependency_injector.wiring import Provide, inject
 from disk_objectstore import Container as DiskContainer
 
 from kinetic_server.frames import FramesApi
+from kinetic_server.uploads import UploadsApi
 
 from .content import ContentApi
-from .db import (ContentDb, FramesDb, IntegrationsDb, PipelineDb, StreamsDb,
+from .db import (ContentDb, FramesDb, IntegrationsDb, PipelineDb, StreamsDb, UploadsDb,
                  WrappedConnection)
 from .integrations import IntegrationsApi
 from .pipelines import PipelineApi, PipelineLoggerFactory
@@ -38,8 +39,12 @@ class Container(containers.DeclarativeContainer):
     integrations_db = providers.Singleton(IntegrationsDb, database_connection)
     integrations_api = providers.Singleton(IntegrationsApi, integrations_db)
 
+
+    uploads_db = providers.Singleton(UploadsDb, database_connection)
+    uploads_api = providers.Singleton(UploadsApi, uploads_db, object_store)
+
     streams_db = providers.Singleton(StreamsDb, database_connection)
-    streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api)
+    streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api, uploads_api)
 
     content_db = providers.Singleton(ContentDb, database_connection)
     content_api = providers.Singleton(ContentApi, content_db, object_store)
