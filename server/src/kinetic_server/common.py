@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Dict, Optional
 
 from dataclasses_json import config, dataclass_json
 from disk_objectstore import Container as DiskContainer
@@ -39,6 +39,10 @@ class StreamMedia:
     url: Optional[str] = None  # The url of the media (if remote)
 
 
+class ContentVersion:
+    Original = "original"
+    Faded = "faded"
+
 @dataclass_json
 @dataclass
 class Content:
@@ -62,13 +66,13 @@ class Content:
             mm_field=fields.DateTime(format="iso"),
         )
     )
+    versions: Dict[ContentVersion, str] # A map of version identifier -> object id for different versions of this media
     metadata: Optional[dict] = None  # Other data that may be useful
     resolution: Optional[Resolution] = None  # Width and height of the video in pixels
     source_id: Optional[
         str
     ] = None  # The id used by the source provider -- i.e., google photos id.
     stream_id: Optional[int] = None  # Which stream contained the original media
-    faded_hash: Optional[str] = None # The object hash of the video with fades included
 
 class PipelineStatus(Enum):
     Successful = "Successful"

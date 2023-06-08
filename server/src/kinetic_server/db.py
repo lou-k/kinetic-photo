@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution, Upload
+from .common import Content, ContentVersion, Frame, PipelineRun, PipelineStatus, Resolution, Upload
 from .processors import (
     Processor,
     list_processors,
@@ -162,6 +162,7 @@ class ContentDb:
         metadata = c.metadata
         if c.metadata:
             metadata = json.dumps(c.metadata)
+        versions = json.dumps(c.versions)
         with self.connection:
             # sqllite3 throws when reading back a timestamp with timezone info
             # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
@@ -171,7 +172,7 @@ class ContentDb:
             if c.processed_at.tzinfo is not None:
                 raise Exception(f"Due to an sqlite bug, processed_at must have no timezone")
             self.connection.execute(
-                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor, faded_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor, versions) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     c.id,
                     c.created_at,
@@ -182,7 +183,7 @@ class ContentDb:
                     metadata,
                     c.stream_id,
                     c.processor,
-                    c.faded_hash
+                    versions
                 ),
             )
 
@@ -228,7 +229,7 @@ class ContentDb:
                 processor=processor,
                 metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
-                faded_hash=faded_hash
+                versions={k:v for k,v in json.loads(versions).items()}
             )
             for (
                 id,
@@ -240,7 +241,7 @@ class ContentDb:
                 metadata,
                 stream_id,
                 processor,
-                faded_hash
+                versions
             ) in results
         ]
 

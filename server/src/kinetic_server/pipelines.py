@@ -7,7 +7,7 @@ import pandas as pd
 import tqdm
 from disk_objectstore import Container
 
-from .common import Orientation, PipelineRun, PipelineStatus, Resolution, StreamMedia
+from .common import ContentVersion, Orientation, PipelineRun, PipelineStatus, Resolution, StreamMedia
 from .content import ContentApi
 from .db import PipelineDb
 from .fader import fade_video
@@ -214,7 +214,9 @@ class Pipeline:
                                         external_id=media.identifier,
                                         stream_id=media.stream_id,
                                         metadata=media.metadata,
-                                        faded_video=faded_bytes,
+                                        versions={
+                                            ContentVersion.Faded: faded_bytes
+                                        },
                                     )
                                     logger.info(f"Created new content {content.id}!")
                                 num_successful += 1

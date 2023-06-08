@@ -1,7 +1,8 @@
-from typing import List, Optional
+from enum import Enum
+from typing import Dict, List, Optional
 
 from disk_objectstore import Container
-from .common import Content, Resolution
+from .common import Content, ContentVersion, Resolution
 from .db import ContentDb
 from datetime import datetime
 
@@ -20,13 +21,11 @@ class ContentApi:
         external_id: Optional[str] = None,
         metadata: Optional[dict] = None,
         stream_id: Optional[int] = None,
-        faded_video: Optional[bytes] = None,
+        versions: Dict[ContentVersion, bytes] = {}
     ) -> Content:
         hash = self.objectstore.add_object(video_file)
-        if faded_video:
-            faded_hash = self.objectstore.add_object(faded_video)
-        else:
-            faded_hash = None
+        versions = {k:self.objectstore.add_object(v) for k,v in versions.items()}
+        versions[ContentVersion.Original] = hash
         # sqllite3 throws when reading back a timestamp with timezone info
         # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
         # Here, we just make created_at match the local timezone to match how "processed_at" is stored.
@@ -40,7 +39,7 @@ class ContentApi:
             source_id=external_id,
             metadata=metadata,
             stream_id=stream_id,
-            faded_hash=faded_hash,
+            versions=versions
         )
         self.db.save(new_content)
         return new_content
