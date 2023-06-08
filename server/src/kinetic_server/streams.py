@@ -183,7 +183,7 @@ class UploadsStream(Stream):
         self.api = uploads
 
     def __iter__(self):
-        self.iterator = self.api.query(limit=sys.maxint)
+        self.iterator = self.api.query(limit=sys.maxsize)
         return self
 
     def __to_media__(self, upload: Upload) -> StreamMedia:

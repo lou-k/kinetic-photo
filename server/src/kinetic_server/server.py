@@ -1,4 +1,5 @@
 import argparse
+import sys
 from dataclasses import dataclass
 from typing import List
 
@@ -40,9 +41,13 @@ def frame(
 
 @inject
 def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
-    frame = frames_api.get(id)
-    version = frame.options.get("preffered_version", "original")
-    content = frames_api.get_content_for(id)
+    if id == "all":
+        version="faded"
+        content = frames_api._content_api.query(sys.maxsize)
+    else:
+        frame = frames_api.get(id)
+        version = frame.options.get("preffered_version", "original")
+        content = frames_api.get_content_for(id)
     res = "#EXTM3U\n"
     for c in content:
         id = c.versions.get(version, c.id)
