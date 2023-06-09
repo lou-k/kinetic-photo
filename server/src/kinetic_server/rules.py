@@ -2,25 +2,27 @@ import inspect
 import json
 import logging
 import sys
+from typing import Union
 
 from jsonpath_ng.ext import parse
 
-from .common import StreamMedia
+from .common import Content, StreamMedia
 
 
 class Rule:
     """A Rule indicates if a peice of media should be kept based on sepcific conditions.
     For example, a rule may only approve images that have an embedded depth map, or those
-    that appear to be portraits.
+    that appear to be portraits. Alternatively, a rule may only approve videos that are high
+    definition, or that were aquired from a specific stream.
 
     Rules get paired with a Processor in pipelines -- thus a rule is meant to exclude
     content that the Processor shouldn't touch.
     """
-    def __call__(self, media: StreamMedia) -> bool:
+    def __call__(self, media: Union[StreamMedia, Content]) -> bool:
         """Applies this rule to the provided stream media and returns the result.
 
         Args:
-            media (StreamMedia): The media to evaluate against this rule.
+            media (StreamMedia| Content): The media to evaluate against this rule.
 
         Returns:
             bool: True if the media abides by the rule, and false otherwise
@@ -56,7 +58,7 @@ class FilterRule(Rule):
         """
         self.expression = expression
 
-    def __call__(self, media: StreamMedia) -> bool:
+    def __call__(self, media: Union[StreamMedia, Content]) -> bool:
         logging.debug(
             f"{type(self)} with expression {self.expression} processing media {media.identifier}"
         )

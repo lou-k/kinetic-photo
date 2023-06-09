@@ -4,9 +4,7 @@ playlist_file: playlist.m3u
 server: http://192.168.86.102:8080
 poll_interval: 30
 player_cmd:
-  - mplayer
-  - -loop
-  - "0"
-  - -msglevel 
-  - all=-1
-  - -playlist
+  - cvlc
+  - -f
+  - --loop
+  - --no-osd

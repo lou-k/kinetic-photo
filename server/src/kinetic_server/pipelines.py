@@ -167,9 +167,9 @@ class Pipeline:
                         logger.info(
                             f"Processing media {media.identifier} with processor {processor.name}..."
                         )
-                        if len(self._content_api.query(1, source_id=media.identifier)):
+                        if len(self._content_api.query(1, source_id=media.identifier, processor=processor.name)):
                             logging.info(
-                                f"Media {media.identifier} has already been processed. Skipping..."
+                                f"Media {media.identifier} has already been processed by {processor.name}. Skipping..."
                             )
                         else:
                             try:
@@ -177,7 +177,7 @@ class Pipeline:
                                 video_bytes = processor(media)
                                 if not video_bytes:
                                     logger.warning(
-                                        f"Processor {processor} returned no bytes for media {media.identifier}..."
+                                        f"Processor {processor} did not return a video for media {media.identifier}..."
                                     )
                                 else:
                                     if (
