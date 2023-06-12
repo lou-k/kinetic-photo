@@ -56,7 +56,7 @@ def fade_video(
                 "-i",
                 tmpfile.name,
                 "-vf",
-                f"fade=t=in:st=0:d={fade_duration},fade=t=out:st={video_duration - fade_duration}:d={fade_duration}",
+                f"fade=t=in:st=0:d={fade_duration},fade=t=out:st={int(video_duration) - fade_duration}:d={fade_duration}",
                 "-b:v",
                 f"{video_bitrate}k",
                 "-c:a",
