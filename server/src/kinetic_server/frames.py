@@ -1,8 +1,7 @@
 
 from typing import List, Optional
 from kinetic_server.common import Content, Frame
-from kinetic_server.content import ContentApi
-from kinetic_server.db import FramesDb
+from kinetic_server.db import ContentDb, FramesDb
 import uuid
 
 class FrameOptions:
@@ -11,9 +10,9 @@ class FrameOptions:
 
 class FramesApi:
 
-    def __init__(self, db: FramesDb, content_api: ContentApi):
+    def __init__(self, db: FramesDb, content_db: ContentDb):
         self._db = db
-        self._content_api = content_api
+        self._content_db = content_db
     
     def get_content_for(self, id: str, limit: Optional[int] = None) -> List[Content]:
         """Materializes content for the provided kinetic photo frame.
@@ -29,7 +28,7 @@ class FramesApi:
         frame = self._db.get(id)
         query_params = frame.options.get(FrameOptions.QUERY_PARAMS, {})
         limit = limit if limit else FrameOptions.DEFAULT_LIMIT
-        return self._content_api.query(
+        return self._content_db.query(
             limit=limit,
             **query_params
         )

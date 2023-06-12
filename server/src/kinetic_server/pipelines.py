@@ -7,12 +7,11 @@ import pandas as pd
 import tqdm
 from disk_objectstore import Container
 
-from .common import ContentVersion, Orientation, PipelineRun, PipelineStatus, Resolution, StreamMedia
+from kinetic_server.steps.step import Step
+
+from .common import Content, PipelineRun, PipelineStatus, StreamMedia
 from .content import ContentApi
-from .db import PipelineDb
-from .fader import fade_video
-from .processors import Processor
-from .rules import Rule
+from .db import ContentDb, PipelineDb
 
 
 class PipelineLogger:
@@ -117,8 +116,8 @@ class Pipeline:
         self,
         id: int,
         name: str,
-        steps: List[Tuple[Rule, Processor]],
-        content_api: ContentApi,
+        steps: List[Step],
+        content_db: ContentDb,
         logger_factory: PipelineLoggerFactory,
     ):
         """Creates an instance of a Pipeline object
@@ -126,20 +125,18 @@ class Pipeline:
         Args:
             id (int): The pipeline's id
             name (str): The Pipeline's name
-            steps (List[Tuple[Rule, Processor]]): Steps in this pipeline
-            content_api (ContentApi): The content api for saving content
+            steps (List[Step]): Steps in this pipeline
+            content_db (ContentDb): The content database for saving content
             logger_factory (PipelineLoggerFactory): A logger factory used to create Pipeline loggers.
         """
         self.id = id
         self.name = name
         self.steps = steps
         self._logger_factory = logger_factory
-        self._content_api = content_api
+        self._content_db = content_db
 
     def __str__(self):
-        return f'Pipeline "{self.name}" ({self.id}).\n Steps:\n' + "\n".join(
-            [f"if {s[0]} then {s[1]}" for s in self.steps]
-        )
+        return f'Pipeline "{self.name}" ({self.id}).\n Steps:\n' + "\n".join([str(s) for s in self.steps])
 
     def __call__(self, stream: Iterator[StreamMedia], limit: int = None) -> None:
         """Runs this Pipeline to convert stream media into kinetic photo content.
@@ -162,70 +159,34 @@ class Pipeline:
                     break
 
                 # Check each rule to see if we can apply it
-                for rule, processor in self.steps:
-                    if rule(media):
-                        logger.info(
-                            f"Processing media {media.identifier} with processor {processor.name}..."
-                        )
-                        if len(self._content_api.query(1, source_id=media.identifier, processor=processor.name)):
-                            logging.info(
-                                f"Media {media.identifier} has already been processed by {processor.name}. Skipping..."
+                content = media
+                try:
+                    # compose the steps of this pipeline together
+                    for step in self.steps:
+                        content = step(content)
+                        if not content:
+                            logging.debug(
+                                f"Step {step.name} returned None for media {media.identifier}..."
                             )
-                        else:
-                            try:
-                                # Process the media into a video file
-                                video_bytes = processor(media)
-                                if not video_bytes:
-                                    logger.warning(
-                                        f"Processor {processor} did not return a video for media {media.identifier}..."
-                                    )
-                                else:
-                                    if (
-                                        "width" in media.metadata
-                                        and "height" in media.metadata
-                                    ):
-                                        resolution = Resolution(
-                                            int(media.metadata["width"]),
-                                            int(media.metadata["height"]),
-                                        )
-                                        if resolution.width > resolution.height:
-                                            orientation = Orientation.Wide
-                                        elif resolution.height > resolution.width:
-                                            orientation = Orientation.Tall
-                                        else:
-                                            orientation = Orientation.Square
-                                        media.metadata[
-                                            "orientation"
-                                        ] = orientation.value
-                                    else:
-                                        resolution = None
+                            break
+                    # perist any content that the pipeline successfully processed
+                    if type(content) == Content:
+                        logger.info(f"Created new content {content.id}!")
+                        content.pipeline_id = self.id
+                        self._content_db.save(content)
+                    elif type(content) == StreamMedia:
+                        raise Exception(
+                            f"Pipeline is misconfigured and returned stream media {content} instead of content..."
+                        )
 
-                                    faded_bytes, video_duration = fade_video(
-                                        video_bytes
-                                    )
-                                    media.metadata["duration"] = video_duration
+                    num_successful += 1
+                except Exception as e:
+                    logger.error(
+                        f"Failed to process media {media}.",
+                        exc_info=e,
+                    )
+                    num_failed += 1
 
-                                    # Save the new content to the data store
-                                    content = self._content_api.save(
-                                        video_file=video_bytes,
-                                        resolution=resolution,
-                                        processor=processor.name,
-                                        created_at=media.created_at,
-                                        external_id=media.identifier,
-                                        stream_id=media.stream_id,
-                                        metadata=media.metadata,
-                                        versions={
-                                            ContentVersion.Faded: faded_bytes
-                                        },
-                                    )
-                                    logger.info(f"Created new content {content.id}!")
-                                num_successful += 1
-                            except Exception as e:
-                                logger.error(
-                                    f"Failed to process media {media.identifier} with processor {processor}, pipeline run will be marked as failed.",
-                                    e,
-                                )
-                                num_failed += 1
             if num_failed > 0 and num_successful == 0:
                 # The processor is consistently failing, throw here to fail the pipeline run
                 raise Exception(
@@ -239,7 +200,7 @@ class PipelineApi:
     def __init__(
         self,
         db: PipelineDb,
-        content_api: ContentApi,
+        content_db: ContentDb,
         logger_factory: PipelineLoggerFactory,
     ):
         """Creates a new instance of the PipelineApi
@@ -250,7 +211,7 @@ class PipelineApi:
             logger_factory (PipelineLoggerFactory): A factory for creating pipeline loggers.
         """
         self._db = db
-        self._content_api = content_api
+        self.content_db = content_db
         self._logger_factory = logger_factory
 
     def get(self, id: int) -> Pipeline:
@@ -263,7 +224,7 @@ class PipelineApi:
             Pipeline: An instantiated pipeline object that represents this pipeline from the database.
         """
         id, name, steps = self._db.get(id)
-        return Pipeline(id, name, steps, self._content_api, self._logger_factory)
+        return Pipeline(id, name, steps, self.content_db, self._logger_factory)
 
     def list(self) -> pd.DataFrame:
         """Lists all pipelines in the database.
@@ -293,16 +254,15 @@ class PipelineApi:
         id = self._db.create(name)
         return self.get(id)
 
-    def add_step(self, pipeline_id: int, rule: Rule, processor: Processor) -> Pipeline:
+    def add_step(self, pipeline_id: int, step: Step) -> Pipeline:
         """Adds a step to the indicated pipeline
 
         Args:
             pipeline_id (int): The pipeline to add the step to.
-            rule (Rule): The step's Rule.
-            processor (Processor): The step's Processor.
+            step (Step): The step to add.
 
         Returns:
             Pipeline: A new pipeline object with the provided step included.
         """
-        self._db.add_step(pipeline_id=pipeline_id, rule=rule, processor=processor)
+        self._db.add_step(pipeline_id=pipeline_id, step=step)
         return self.get(pipeline_id)

@@ -11,11 +11,9 @@ from .containers import Container
 from .frames import FramesApi
 from .integrations import IntegrationsApi, IntegrationType
 from .pipelines import PipelineApi
-from .processors import list_processors
-from .rules import list_rules
+from .steps import list_steps
 from .streams import StreamsApi, StreamType
 from .uploads import UploadsApi
-
 
 @inject
 def streams(
@@ -190,11 +188,8 @@ def pipelines(
             else:
                 logging.error(f"No pipeline run with id {args.run_id} found")
         case "add-step":
-            rule = list_rules()[args.rule](**json.loads(args.rule_params))
-            processor = list_processors()[args.processor](
-                **json.loads(args.processor_params)
-            )
-            new_pipeline = pipelines_api.add_step(args.pipeline_id, rule, processor)
+            step = list_steps()[args.step](**json.loads(args.step_params))
+            new_pipeline = pipelines_api.add_step(args.pipeline_id, step)
             logging.info(f"Pipeline is now: {new_pipeline}")
         case "run":
             pipeline = pipelines_api.get(args.pipeline_id)
@@ -228,26 +223,15 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
         "pipeline_id", type=int, help="The pipeline to add the step to."
     )
     steps_parser.add_argument(
-        "rule",
+        "step",
         type=str,
-        help="The class name of the rule to create for this step.",
-        choices=list_rules().keys(),
+        help="The class name of the step to create for this step.",
+        choices=list_steps().keys(),
     )
     steps_parser.add_argument(
-        "rule_params",
+        "step_params",
         type=str,
-        help="A json object containing the parameters for this rule.",
-    )
-    steps_parser.add_argument(
-        "processor",
-        type=str,
-        help="The class name of the processor to create for this step.",
-        choices=list_processors().keys(),
-    )
-    steps_parser.add_argument(
-        "processor_params",
-        type=str,
-        help="A json object containing the parameters for this processor.",
+        help="A json object containing the parameters for this step.",
     )
     steps_parser.set_defaults(action="add-step")
     run_parser = subparsers.add_parser(name="run", help="Runs a pipeline")

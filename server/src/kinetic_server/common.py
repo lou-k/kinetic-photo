@@ -58,7 +58,6 @@ class Content:
             mm_field=fields.DateTime(format="iso"),
         )
     )
-    processor: str  # The processor that made this content
     processed_at: datetime = field(  # When the media was created
         metadata=config(
             encoder=datetime.isoformat,
@@ -68,6 +67,7 @@ class Content:
     )
     versions: Dict[ContentVersion, str] # A map of version identifier -> object id for different versions of this media
     metadata: Optional[dict] = None  # Other data that may be useful
+    pipeline_id: Optional[int] = None # The pipeline that made this content
     resolution: Optional[Resolution] = None  # Width and height of the video in pixels
     source_id: Optional[
         str

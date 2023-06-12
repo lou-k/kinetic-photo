@@ -47,18 +47,18 @@ class Container(containers.DeclarativeContainer):
     streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api, uploads_api)
 
     content_db = providers.Singleton(ContentDb, database_connection)
-    content_api = providers.Singleton(ContentApi, content_db, object_store)
+    content_api = providers.Singleton(ContentApi, object_store)
 
     pipeline_db = providers.Singleton(PipelineDb, database_connection)
     pipeline_logger_factory = providers.Singleton(
         PipelineLoggerFactory, pipeline_db, object_store
     )
     pipeline_api = providers.Singleton(
-        PipelineApi, pipeline_db, content_api, pipeline_logger_factory
+        PipelineApi, pipeline_db, content_db, pipeline_logger_factory
     )
 
     frames_db = providers.Singleton(FramesDb, database_connection)
-    frames_api = providers.Singleton(FramesApi, frames_db, content_api)
+    frames_api = providers.Singleton(FramesApi, frames_db, content_db)
 
 
 @inject

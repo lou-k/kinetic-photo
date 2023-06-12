@@ -1,0 +1,87 @@
+import logging
+import urllib.request
+from typing import Optional, Tuple
+
+from kinetic_server.common import Content, Orientation, Resolution, StreamMedia
+from kinetic_server.steps.step import ContentCreator
+
+
+def get_resolution_and_orientation(
+    m: StreamMedia,
+) -> Tuple[Optional[Resolution], Optional[Orientation]]:
+    if "width" in m.metadata and "height" in m.metadata:
+        resolution = Resolution(
+            int(m.metadata["width"]),
+            int(m.metadata["height"]),
+        )
+        if resolution.width > resolution.height:
+            orientation = Orientation.Wide
+        elif resolution.height > resolution.width:
+            orientation = Orientation.Tall
+        else:
+            orientation = Orientation.Square
+        return (resolution, orientation)
+    else:
+        return None, None
+
+
+class CopyVideo(ContentCreator):
+    """A simple creator that just copies video from streams into the content library."""
+
+    def __init__(self):
+        pass
+
+    def create(self, m: StreamMedia) -> Optional[Content]:
+        """Downloads the provided video clip if present.
+
+        Args:
+            media (StreamMedia): The stream media (hoppefully) containing a video.
+
+        Returns:
+            Optional[bytes]: The content created or None if stream media is an image.
+        """
+        if not m.is_video:
+            logging.info(
+                f"Skipping media {m.filename} from stream {m.stream_id} since it is not a video."
+            )
+            return None
+
+        from ._apis import _object_store
+
+        os = _object_store()
+
+        # Get the video orientation and resolution
+        resolution, orientation = get_resolution_and_orientation(m)
+        metadata = m.metadata
+        if orientation:
+            metadata["orientation"] = orientation.value
+
+        # Download the video if it's a url
+        if m.url:
+            logging.info(f"Downloading {m.url}....")
+            try:
+                response = urllib.request.urlopen(m.url)
+                video_bytes = response.read()
+            except Exception as e:
+                logging.warning(
+                    f"Could not download {m.url} for media {m.identifier}..", exc_info=e
+                )
+                return None
+        # Load the video if it's an upload
+        elif os.has_object(m.identifier):
+            video_bytes = os.get_object_content(m.identifier)
+        else:
+            logging.info(
+                f"Could not download or find a video file for {m.identifier} .."
+            )
+            return None
+
+        # Create the content
+        return self.content_api.create(
+            video_file=video_bytes,
+            resolution=resolution,
+            created_at=m.created_at,
+            source_id=m.identifier,
+            stream_id=m.stream_id,
+            metadata=metadata,
+        )

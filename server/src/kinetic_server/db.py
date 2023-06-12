@@ -3,19 +3,12 @@ import json
 import logging
 import os
 import sqlite3
-from datetime import datetime
 from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .common import Content, ContentVersion, Frame, PipelineRun, PipelineStatus, Resolution, Upload
-from .processors import (
-    Processor,
-    list_processors,
-    processor_adapter,
-    processor_converter,
-)
-from .rules import Rule, list_rules, rule_adapter, rule_converter
+from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution, Upload
+from .steps import Step, list_steps, step_adapter, step_converter
 
 
 def _update_database_if_needed(connection: sqlite3.Connection) -> None:
@@ -26,11 +19,11 @@ def _update_database_if_needed(connection: sqlite3.Connection) -> None:
 
     # Update any schemas if necessary
     sql_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "db", "sql")
-    for file_path in sorted(glob.glob(sql_dir + "/*.sql")):
-        idx = int(os.path.basename(file_path)[0:3])
-        if idx > current_version:
-            logging.warning(f"Updating database to version {idx} with {file_path}")
-            with connection:
+    with connection:
+        for file_path in sorted(glob.glob(sql_dir + "/*.sql")):
+            idx = int(os.path.basename(file_path)[0:3])
+            if idx > current_version:
+                logging.warning(f"Updating database to version {idx} with {file_path}")
                 with open(file_path, "r") as sql_file:
                     connection.executescript(sql_file.read())
                 connection.execute("PRAGMA user_version = " + str(idx))
@@ -50,14 +43,10 @@ def pipeline_status_converter(s: str) -> PipelineStatus:
 
 
 def _setup_types() -> None:
-    sqlite3.register_adapter(Rule, rule_adapter)
-    for subclass in list_rules().values():
-        sqlite3.register_adapter(subclass, rule_adapter)
-    sqlite3.register_converter("Rule", rule_converter)
-    sqlite3.register_adapter(Processor, processor_adapter)
-    for subclass in list_processors().values():
-        sqlite3.register_adapter(subclass, processor_adapter)
-    sqlite3.register_converter("Processor", processor_converter)
+    sqlite3.register_adapter(Step, step_adapter)
+    for subclass in list_steps().values():
+        sqlite3.register_adapter(subclass, step_adapter)
+    sqlite3.register_converter("Step", step_converter)
     sqlite3.register_adapter(PipelineStatus, pipeline_status_adapter)
     sqlite3.register_converter("PipelineStatus", pipeline_status_converter)
 
@@ -172,7 +161,7 @@ class ContentDb:
             if c.processed_at.tzinfo is not None:
                 raise Exception(f"Due to an sqlite bug, processed_at must have no timezone")
             self.connection.execute(
-                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, processor, versions) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, pipeline_id, versions) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     c.id,
                     c.created_at,
@@ -182,7 +171,7 @@ class ContentDb:
                     c.source_id,
                     metadata,
                     c.stream_id,
-                    c.processor,
+                    c.pipeline_id,
                     versions
                 ),
             )
@@ -192,7 +181,7 @@ class ContentDb:
         limit: int,
         source_id: Optional[str] = None,
         stream_id: Optional[int] = None,
-        processor: Optional[str] = None,
+        pipeline_id: Optional[int] = None,
         created_after: Optional[str] = None,
         created_before: Optional[str] = None,
     ) -> List[Content]:
@@ -201,7 +190,7 @@ class ContentDb:
             for x in [
                 ("source_id == ?", source_id),
                 ("stream_id == ?", stream_id),
-                ("processor == ?", processor),
+                ("pipeline_id == ?", pipeline_id),
                 ("created_at > ?", created_after),
                 ("created_at < ?", created_before),
             ]
@@ -226,7 +215,7 @@ class ContentDb:
                 processed_at=processed_at,
                 resolution=Resolution(width, height) if width and height else None,
                 source_id=source_id,
-                processor=processor,
+                pipeline_id=pipeline_id,
                 metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
                 versions={k:v for k,v in json.loads(versions).items()}
@@ -234,13 +223,13 @@ class ContentDb:
             for (
                 id,
                 created_at,
-                processed_at,
                 height,
-                width,
-                source_id,
                 metadata,
+                pipeline_id,
+                processed_at,
+                source_id,
                 stream_id,
-                processor,
+                width,
                 versions
             ) in results
         ]
@@ -313,7 +302,7 @@ class PipelineDb:
 
     def get(
         self, pipeline_id: int
-    ) -> Optional[Tuple[int, str, List[Tuple[Rule, Processor]]]]:
+    ) -> Optional[Tuple[int, str, List[Step]]]:
         with self.connection:
             res = self.connection.execute(
                 "SELECT * FROM pipelines WHERE id = ?", (pipeline_id,)
@@ -324,12 +313,12 @@ class PipelineDb:
         else:
             return None
 
-    def get_steps(self, pipeline_id: int) -> List[Tuple[Rule, Processor]]:
+    def get_steps(self, pipeline_id: int) -> List[Step]:
         with self.connection:
-            return self.connection.execute(
-                "SELECT rule, processor FROM pipeline_steps WHERE pipeline_id = ?",
+            return [s[0] for s in self.connection.execute(
+                "SELECT step FROM pipeline_steps WHERE pipeline_id = ? ORDER BY id ASC",
                 (pipeline_id,),
-            ).fetchall()
+            ).fetchall()]
 
     def create(self, name: str) -> int:
         """
@@ -343,15 +332,15 @@ class PipelineDb:
             )
             return cursor.lastrowid
 
-    def add_step(self, pipeline_id: int, rule: Rule, processor: Processor) -> int:
+    def add_step(self, pipeline_id: int, step: Step) -> int:
         """
         Adds a step to a pipeline.
         """
         with self.connection:
             cursor = self.connection.cursor()
             cursor.execute(
-                "INSERT INTO pipeline_steps(pipeline_id, rule, processor) VALUES(?, ?, ?)",
-                (pipeline_id, rule, processor),
+                "INSERT INTO pipeline_steps(pipeline_id, step) VALUES(?, ?)",
+                (pipeline_id, step),
             )
             return cursor.lastrowid
 

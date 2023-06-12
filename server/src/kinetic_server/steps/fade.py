@@ -2,6 +2,9 @@ import logging
 import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Tuple
+from kinetic_server.common import Content, ContentVersion
+
+from kinetic_server.steps.step import ContentAugmentor
 
 
 def get_video_duration(filename: str) -> float:
@@ -69,3 +72,26 @@ def fade_video(
             subprocess.run(cmd, check=True)
             with open(resultfile.name, "rb") as fin:
                 return (fin.read(), video_duration)
+
+
+class Fade(ContentAugmentor):
+    """Adds a fade to and from black at the beginning and end of the video clip. This makes transitions on frames a bit smoother.
+    """
+
+    def augment(self, c: Content) -> Content:
+        from ._apis import _object_store
+        os = _object_store()
+
+        if not ContentVersion.Faded in c.versions:
+            logging.info(f"Generating faded video for content {c.id}...")
+            try:
+                # TODO: load the bitrate and fade duration in the class parameters
+                faded_bytes, video_duration = fade_video(
+                    os.get_object_content(c.id)
+                )
+                c.versions[ContentVersion.Faded] = os.add_object(faded_bytes)
+                c.metadata['duration'] = video_duration
+            except Exception as e:
+                logging.warning(f"Could not create faded video for {c.id}", exc_info=e)
+                return c
+        return c
