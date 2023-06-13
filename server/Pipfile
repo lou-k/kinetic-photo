@@ -16,6 +16,7 @@ tqdm = "*"
 uwsgi = "*"
 python-magic = "*"
 pillow = "*"
+gradio-client = "*"
 
 [dev-packages]
 ipython = "*"

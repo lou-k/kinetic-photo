@@ -1,10 +1,47 @@
 import logging
+import json
 import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Tuple
 from kinetic_server.common import Content, ContentVersion
 
 from kinetic_server.steps.step import ContentAugmentor
+
+
+def get_video_time_data(filename: str) -> dict:
+    """Retrieves info for a video file from on disk.
+
+    Args:
+        filename (str): The video file to get the time stats for.
+
+    Returns:
+        dict: A dictionary containing the video's frame rate, number of frames, and duration.
+        Example:
+         {
+            "programs": [
+
+            ],
+            "streams": [
+                {
+                    "r_frame_rate": "30/1",
+                    "nb_read_frames": "240"
+                }
+            ],
+            "format": {
+                "duration": "8.058000"
+            }
+        }
+    """
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-show_entries","format=duration","-v","error","-select_streams","v:0","-count_frames","-show_entries","stream=nb_read_frames,r_frame_rate","-print_format","json",
+            filename,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    return json.loads(result.stdout)
 
 
 def get_video_duration(filename: str) -> float:
@@ -49,14 +86,18 @@ def fade_video(
     with NamedTemporaryFile() as tmpfile:
         with open(tmpfile.name, "wb") as fout:
             fout.write(video_bytes)
-        video_duration = get_video_duration(tmpfile.name)
+        time_info = get_video_time_data(tmpfile.name)
+        fps = eval(time_info['streams'][0]['r_frame_rate'])
+        frames_to_fade = int(fade_duration * fps)
+        total_frames = int(time_info['streams'][0]['nb_read_frames'])
+        video_duration = float(time_info['format']['duration'])
         with NamedTemporaryFile(suffix=".mp4") as resultfile:
             cmd = [
                 "ffmpeg",
                 "-i",
                 tmpfile.name,
                 "-vf",
-                f"fade=t=in:st=0:d={fade_duration},fade=t=out:st={int(video_duration) - fade_duration}:d={fade_duration}",
+                f"fade=t=in:s=0:n={frames_to_fade},fade=t=out:s={total_frames - frames_to_fade}:n={frames_to_fade}",
                 "-b:v",
                 f"{video_bitrate}k",
                 "-c:a",
@@ -76,7 +117,18 @@ def fade_video(
 
 class Fade(ContentAugmentor):
     """Adds a fade to and from black at the beginning and end of the video clip. This makes transitions on frames a bit smoother.
+    It will add a new video to the versions dictionary called "faded"
     """
+
+    def __init__(self, fade_duration: float = 1, video_bitrate: int = 1200):
+        """Creates a new fade augmentor.
+
+        Args:
+            fade_duration (float, optional): The duration of the fade in seconds. Defaults to 1.
+            video_bitrate (int, optional): The bitrate of the re-encoded video. Defaults to 1200.
+        """
+        self.fade_duration = fade_duration
+        self.video_bitrate = video_bitrate
 
     def augment(self, c: Content) -> Content:
         from ._apis import _object_store
@@ -87,7 +139,9 @@ class Fade(ContentAugmentor):
             try:
                 # TODO: load the bitrate and fade duration in the class parameters
                 faded_bytes, video_duration = fade_video(
-                    os.get_object_content(c.id)
+                    os.get_object_content(c.id),
+                    video_bitrate=self.video_bitrate,
+                    fade_duration=self.fade_duration
                 )
                 c.versions[ContentVersion.Faded] = os.add_object(faded_bytes)
                 c.metadata['duration'] = video_duration
