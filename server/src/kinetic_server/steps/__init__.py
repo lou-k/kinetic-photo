@@ -6,6 +6,7 @@ from .copy_video import CopyVideo
 from .fade import Fade
 from .filter import Filter
 from .filter_seen import FilterSeen
+from .depth import ComputeDepth
 from .step import *
 
 

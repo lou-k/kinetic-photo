@@ -12,6 +12,7 @@ from .db import StreamsDb
 from .integrations import IntegrationsApi
 from .integrations.common import Integration
 from .uploads import UploadsApi
+import logging
 
 
 class StreamType(Enum):
@@ -29,23 +30,6 @@ class Stream:
 
     def __next__(self):
         ...
-
-
-class Filter:
-    def __init__(self, expression: str, over: Stream):
-        self.over = over
-        self.expression = expression
-
-    def __iter__(self):
-        self.over.__iter__()
-        return self
-
-    def __next__(self) -> StreamMedia:
-        while True:
-            media = next(self.over)
-            if len(parse(self.expression).find([media.to_dict()])):
-                return media
-
 
 class StreamsApi:
     def __init__(
@@ -162,10 +146,17 @@ class GooglePhotosSearchStream(GooglePhotosStream):
         super().__init__(id, integration)
         # we'll call eval here to convert the filter and exclusions into the proper gphotospy types.
         # this isn't ideal... perhaps we should switch away from gphotospy and use the api directly...
+        logging.info("filter is " + str(type(filter)) + " with value: " + str(filter))
         if filter:
-            filter = eval(filter)
+            if isinstance(filter, list):
+                filter = [eval(f) for f in filter]
+            else:
+                filter = eval(filter)
         if exclude:
-            exclude = eval(exclude)
+            if isinstance(exclude, list):
+                exclude = [eval(f) for f in exclude]
+            else:
+                exclude = eval(exclude)
         self.filter = filter
         self.exclude = exclude
 

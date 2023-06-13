@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .common import Content, Frame, PipelineRun, PipelineStatus, Resolution, Upload
+from .common import Content, DepthImage, Frame, PipelineRun, PipelineStatus, Resolution, Upload
 from .steps import Step, list_steps, step_adapter, step_converter
 
 
@@ -524,3 +524,38 @@ class UploadsDb:
                 content_type
             ) in results
         ]
+    
+class DepthCacheDb:
+
+    def __init__(self, connection: sqlite3.Connection):
+        self.connection = connection
+
+    def get(
+        self, id: int
+    ) -> Optional[DepthImage]:
+        """
+        Gets a depth image from the datastore.
+        """
+        with self.connection:
+            res = self.connection.execute(
+                "SELECT * FROM depth_cache WHERE id = ?", (id,)
+            ).fetchone()
+        return DepthImage(*res) if res else None
+
+    def save(self, d: DepthImage):
+        """Stores a depth image in the database
+        """
+        with self.connection:
+            # sqllite3 throws when reading back a timestamp with timezone info
+            # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
+            # Just check that the values passed don't have timezone info
+            if d.extracted_at.tzinfo is not None:
+                raise Exception(f"Due to an sqlite bug, extracted_at must have no timezone")
+            self.connection.execute(
+                "REPLACE INTO depth_cache (id, extracted_at, depth_hash) VALUES(?, ?, ?)",
+                (
+                    d.id,
+                    d.extracted_at,
+                    d.depth_hash
+                ),
+            )

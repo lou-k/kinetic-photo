@@ -5,6 +5,7 @@ Don't ibnject them directly into the class constructors as they won't get serial
 from dependency_injector.wiring import Provide, inject
 
 from kinetic_server.db import ContentDb
+from src.kinetic_server.depthcache import DepthCache
 
 from ..containers import Container
 from disk_objectstore import Container as DiskContainer
@@ -24,6 +25,11 @@ def _content_db(db=Provide[Container.content_db]) -> ContentDb:
 @inject
 def _object_store(os=Provide[Container.object_store]) -> DiskContainer:
     return os
+
+
+@inject
+def _depth_cache(dc=Provide[Container.depth_cache]) -> DepthCache:
+    return dc
 
 container = Container()
 container.init_resources()

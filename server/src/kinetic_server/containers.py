@@ -10,8 +10,9 @@ from kinetic_server.frames import FramesApi
 from kinetic_server.uploads import UploadsApi
 
 from .content import ContentApi
-from .db import (ContentDb, FramesDb, IntegrationsDb, PipelineDb, StreamsDb, UploadsDb,
-                 WrappedConnection)
+from .db import (ContentDb, DepthCacheDb, FramesDb, IntegrationsDb, PipelineDb,
+                 StreamsDb, UploadsDb, WrappedConnection)
+from .depthcache import DepthCache
 from .integrations import IntegrationsApi
 from .pipelines import PipelineApi, PipelineLoggerFactory
 from .streams import StreamsApi
@@ -39,12 +40,13 @@ class Container(containers.DeclarativeContainer):
     integrations_db = providers.Singleton(IntegrationsDb, database_connection)
     integrations_api = providers.Singleton(IntegrationsApi, integrations_db)
 
-
     uploads_db = providers.Singleton(UploadsDb, database_connection)
     uploads_api = providers.Singleton(UploadsApi, uploads_db, object_store)
 
     streams_db = providers.Singleton(StreamsDb, database_connection)
-    streams_api = providers.Singleton(StreamsApi, streams_db, integrations_api, uploads_api)
+    streams_api = providers.Singleton(
+        StreamsApi, streams_db, integrations_api, uploads_api
+    )
 
     content_db = providers.Singleton(ContentDb, database_connection)
     content_api = providers.Singleton(ContentApi, object_store)
@@ -59,6 +61,9 @@ class Container(containers.DeclarativeContainer):
 
     frames_db = providers.Singleton(FramesDb, database_connection)
     frames_api = providers.Singleton(FramesApi, frames_db, content_db)
+
+    depth_db = providers.Singleton(DepthCacheDb, database_connection)
+    depth_cache = providers.Singleton(DepthCache, depth_db, object_store)
 
 
 @inject

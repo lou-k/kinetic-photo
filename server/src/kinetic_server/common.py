@@ -122,6 +122,19 @@ class Upload:
     content_type: str # The mime type of this file
     metadata: Optional[dict]  # Other data that may be useful such as resolution, etc
 
+@dataclass_json
+@dataclass
+class DepthImage:
+    id: str # The source_id (i.e., identifier from stream media) where this depth was created from
+    extracted_at:  datetime = field(  # When the depth was extracted
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=datetime.fromisoformat,
+            mm_field=fields.DateTime(format="iso"),
+        )
+    )
+    depth_hash: str # The object hash of this depth image in the object store
+    
 
 def initialize_objectstore(container: DiskContainer) -> None:
     if not container.is_initialised:
