@@ -1,6 +1,7 @@
-import datetime
 import logging
 import os
+import json
+from datetime import datetime
 from typing import Optional, Union
 
 from gradio_client import Client
@@ -12,9 +13,10 @@ _client_cache = {}
 
 
 def _get_client(**kwargs) -> Client:
-    if kwargs not in _client_cache:
-        _client_cache[kwargs] = Client(**kwargs)
-    return _client_cache[kwargs]
+    key = json.dumps(kwargs)
+    if key not in _client_cache:
+        _client_cache[key] = Client(**kwargs)
+    return _client_cache[key]
 
 
 class ComputeDepth(Step):
@@ -56,7 +58,7 @@ class ComputeDepth(Step):
         depth_cache = _depth_cache()
 
         # See if this image already has a depth image
-        depth_image = depth_cache.get(media.identifier)
+        depth_image = depth_cache.db.get(media.identifier)
         if not depth_image:
             # Compute the depth image
             try:
@@ -64,7 +66,7 @@ class ComputeDepth(Step):
                     f"Extracting depth for {media.identifier} using {self.hf_src}, this may take a while...."
                 )
                 start_t = datetime.now()
-                client = _get_client(hf_src=self.hf_src, hf_token=self.hf_token)
+                client = _get_client(src=self.hf_src, hf_token=self.hf_token)
                 result = client.predict(media.url, api_name="/predict")
                 end_t = datetime.now()
                 logging.info(
@@ -72,7 +74,7 @@ class ComputeDepth(Step):
                 )
 
                 if len(result) > 1 and result[1] == "Completed":
-                    with open(result[0]) as fin:
+                    with open(result[0], 'rb') as fin:
                         depth_bytes = fin.read()
                     depth_image = depth_cache.save(media.identifier, depth_bytes)
                     os.remove(result[0])

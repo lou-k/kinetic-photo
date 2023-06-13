@@ -23,7 +23,7 @@ class DepthCache:
         return self.os.get_object_content(di.depth_hash) if di else None
         
 
-    def save(self, id: str, depth_image: bytes):
+    def save(self, id: str, depth_image: bytes) -> DepthImage:
         """Saves a new depth image to the cache.
 
         Args:
