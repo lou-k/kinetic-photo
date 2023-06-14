@@ -5,7 +5,7 @@ Don't ibnject them directly into the class constructors as they won't get serial
 from dependency_injector.wiring import Provide, inject
 
 from kinetic_server.db import ContentDb
-from src.kinetic_server.depthcache import DepthCache
+from kinetic_server.depthcache import DepthCache
 
 from ..containers import Container
 from disk_objectstore import Container as DiskContainer

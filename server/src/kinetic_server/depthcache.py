@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional
 from disk_objectstore import Container
-from src.kinetic_server.common import DepthImage
-from src.kinetic_server.db import DepthCacheDb
+from kinetic_server.common import DepthImage
+from kinetic_server.db import DepthCacheDb
 
 
 class DepthCache:

@@ -8,7 +8,7 @@ import tqdm
 from disk_objectstore import Container
 
 from kinetic_server.steps.step import Step
-from src.kinetic_server.streams import StreamsApi
+from kinetic_server.streams import StreamsApi
 
 from .common import Content, PipelineRun, PipelineStatus, StreamMedia
 from .content import ContentApi
