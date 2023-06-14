@@ -157,6 +157,7 @@ class Pipeline:
             stream = self._streams_api.get(self.stream_id)
             num_successful = 0
             num_failed = 0
+            num_new = 0
             for i, media in tqdm.tqdm(enumerate(stream), total=limit):
                 # stop if limit is reached
                 if limit and i > limit:
@@ -179,6 +180,7 @@ class Pipeline:
                         logger.info(f"Created new content {content.id}!")
                         content.pipeline_id = self.id
                         self._content_db.save(content)
+                        num_new += 1
                     elif type(content) == StreamMedia:
                         raise Exception(
                             f"Pipeline is misconfigured and returned stream media {content} instead of content..."
@@ -197,6 +199,7 @@ class Pipeline:
                 raise Exception(
                     f"Pipeline {self.name} ({self.id}) failed all media -- considering this run a failure. See logs for details."
                 )
+            logging.info(f"Created {num_new} new kinetic photos!")
 
 
 class PipelineApi:
