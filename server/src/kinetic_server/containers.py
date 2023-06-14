@@ -56,7 +56,7 @@ class Container(containers.DeclarativeContainer):
         PipelineLoggerFactory, pipeline_db, object_store
     )
     pipeline_api = providers.Singleton(
-        PipelineApi, pipeline_db, content_db, pipeline_logger_factory
+        PipelineApi, pipeline_db, content_db, pipeline_logger_factory, streams_api
     )
 
     frames_db = providers.Singleton(FramesDb, database_connection)

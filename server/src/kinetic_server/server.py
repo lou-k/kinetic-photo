@@ -43,7 +43,7 @@ def frame(
 def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
     if id == "all":
         version="faded"
-        content = frames_api._content_api.db.query(sys.maxsize)
+        content = frames_api._content_db.query(sys.maxsize)
     else:
         frame = frames_api.get(id)
         version = frame.options.get("preffered_version", "original")

@@ -1,13 +1,14 @@
 import logging
 from datetime import datetime
 from tempfile import NamedTemporaryFile
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 import pandas as pd
 import tqdm
 from disk_objectstore import Container
 
 from kinetic_server.steps.step import Step
+from src.kinetic_server.streams import StreamsApi
 
 from .common import Content, PipelineRun, PipelineStatus, StreamMedia
 from .content import ContentApi
@@ -115,10 +116,12 @@ class Pipeline:
     def __init__(
         self,
         id: int,
+        stream_id: int,
         name: str,
         steps: List[Step],
         content_db: ContentDb,
         logger_factory: PipelineLoggerFactory,
+        streams_api: StreamsApi
     ):
         """Creates an instance of a Pipeline object
 
@@ -130,19 +133,20 @@ class Pipeline:
             logger_factory (PipelineLoggerFactory): A logger factory used to create Pipeline loggers.
         """
         self.id = id
+        self.stream_id = stream_id
         self.name = name
         self.steps = steps
         self._logger_factory = logger_factory
         self._content_db = content_db
+        self._streams_api = streams_api
 
     def __str__(self):
         return f'Pipeline "{self.name}" ({self.id}).\n Steps:\n' + "\n".join([str(s) for s in self.steps])
 
-    def __call__(self, stream: Iterator[StreamMedia], limit: int = None) -> None:
+    def __call__(self,  limit: Optional[int] = None) -> None:
         """Runs this Pipeline to convert stream media into kinetic photo content.
 
         Args:
-            stream (Iterator[StreamMedia]): An iterator of media items to process.
             limit (int, optional): If set, only process this many items.
 
         Raises:
@@ -150,6 +154,7 @@ class Pipeline:
         """
         pipeline_logger = self._logger_factory(self)
         with pipeline_logger as logger:
+            stream = self._streams_api.get(self.stream_id)
             num_successful = 0
             num_failed = 0
             for i, media in tqdm.tqdm(enumerate(stream), total=limit):
@@ -202,6 +207,7 @@ class PipelineApi:
         db: PipelineDb,
         content_db: ContentDb,
         logger_factory: PipelineLoggerFactory,
+        streams_api: StreamsApi
     ):
         """Creates a new instance of the PipelineApi
 
@@ -213,6 +219,7 @@ class PipelineApi:
         self._db = db
         self.content_db = content_db
         self._logger_factory = logger_factory
+        self._streams_api = streams_api
 
     def get(self, id: int) -> Pipeline:
         """Retrieves a pipeline by it's id
@@ -223,8 +230,8 @@ class PipelineApi:
         Returns:
             Pipeline: An instantiated pipeline object that represents this pipeline from the database.
         """
-        id, name, steps = self._db.get(id)
-        return Pipeline(id, name, steps, self.content_db, self._logger_factory)
+        id, stream_id, name, steps = self._db.get(id)
+        return Pipeline(id, stream_id, name, steps, self.content_db, self._logger_factory, self._streams_api)
 
     def list(self) -> pd.DataFrame:
         """Lists all pipelines in the database.
@@ -242,7 +249,7 @@ class PipelineApi:
         """
         return self._db.list_runs()
 
-    def create(self, name: str) -> Pipeline:
+    def create(self, name: str, stream_id: int) -> Pipeline:
         """Creates a new pipeline with the provided name.
 
         Args:
@@ -251,7 +258,7 @@ class PipelineApi:
         Returns:
             Pipeline: An instantiated pipeline class representing the new pipeline you created.
         """
-        id = self._db.create(name)
+        id = self._db.create(name, stream_id)
         return self.get(id)
 
     def add_step(self, pipeline_id: int, step: Step) -> Pipeline:

@@ -302,14 +302,14 @@ class PipelineDb:
 
     def get(
         self, pipeline_id: int
-    ) -> Optional[Tuple[int, str, List[Step]]]:
+    ) -> Optional[Tuple[int, int, str, List[Step]]]:
         with self.connection:
             res = self.connection.execute(
                 "SELECT * FROM pipelines WHERE id = ?", (pipeline_id,)
             ).fetchone()
         if res:
-            id, name = res
-            return (id, name, self.get_steps(pipeline_id))
+            id, stream_id, name = res
+            return (id, stream_id, name, self.get_steps(pipeline_id))
         else:
             return None
 
@@ -320,15 +320,15 @@ class PipelineDb:
                 (pipeline_id,),
             ).fetchall()]
 
-    def create(self, name: str) -> int:
+    def create(self, name: str, stream_id: int) -> int:
         """
         Creates a new pipeline
         """
         with self.connection:
             cursor = self.connection.cursor()
             cursor.execute(
-                "INSERT INTO pipelines(name) VALUES(?)",
-                (name,),
+                "INSERT INTO pipelines(name, stream_id) VALUES(?, ?)",
+                (name,stream_id),
             )
             return cursor.lastrowid
 

@@ -176,7 +176,7 @@ def pipelines(
         case "info":
             logging.info(str(pipelines_api.get(args.pipeline_id)))
         case "add":
-            id = pipelines_api.create(name=args.name)
+            id = pipelines_api.create(name=args.name, stream_id=args.stream_id)
             logging.info(f"Created pipeline {args.name} with id {id}")
         case "list-runs":
             logging.info(pipelines_api._db.list_runs())
@@ -193,8 +193,7 @@ def pipelines(
             logging.info(f"Pipeline is now: {new_pipeline}")
         case "run":
             pipeline = pipelines_api.get(args.pipeline_id)
-            stream = streams_api.get(args.stream_id)
-            pipeline(stream, args.limit)
+            pipeline(args.limit)
 
 
 def pipelines_parser(app_subparsers: argparse._SubParsersAction):
@@ -204,6 +203,7 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
     subparsers = parser.add_subparsers(metavar="action", required=True)
     add_parser = subparsers.add_parser(name="add", help="Add a pipeline")
     add_parser.add_argument("name", help="What to name this pipeline")
+    add_parser.add_argument("stream_id", type=int, help="What stream this pipeline consumes")
     add_parser.set_defaults(action="add")
     list_parser = subparsers.add_parser(name="list", help="List pipelines")
     list_parser.set_defaults(action="list")
@@ -236,7 +236,6 @@ def pipelines_parser(app_subparsers: argparse._SubParsersAction):
     steps_parser.set_defaults(action="add-step")
     run_parser = subparsers.add_parser(name="run", help="Runs a pipeline")
     run_parser.add_argument("pipeline_id", help="Which pipeline to run.")
-    run_parser.add_argument("stream_id", help="Which stream to run the pipeline on.")
     run_parser.add_argument(
         "-l", "--limit", type=int, default=None, help="Only process this many media."
     )

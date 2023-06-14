@@ -16,8 +16,14 @@ CREATE TABLE streams (
 
 CREATE TABLE pipelines (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
+    stream_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    FOREIGN KEY (stream_id) REFERENCES streams (id) ON DELETE
+    SET
+        NULL ON UPDATE NO ACTION
 );
+
+CREATE INDEX pipelines_stream_id_idx ON pipelines (stream_id);
 
 CREATE TABLE content (
     id TEXT PRIMARY KEY,
