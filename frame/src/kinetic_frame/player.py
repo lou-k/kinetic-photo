@@ -69,7 +69,7 @@ def main():
     subprocess_pid = None
 
     while True:
-        logging.info("trying to get frame...")
+        logging.info(f"trying to get frame.. {frame_id}")
         try:
             frame = client.frame(frame_id)
         except Exception as e:

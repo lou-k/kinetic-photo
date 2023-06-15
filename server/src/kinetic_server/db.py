@@ -184,6 +184,7 @@ class ContentDb:
         pipeline_id: Optional[int] = None,
         created_after: Optional[str] = None,
         created_before: Optional[str] = None,
+        orientation: Optional[str] = None
     ) -> List[Content]:
         conditionals = [
             x
@@ -193,6 +194,7 @@ class ContentDb:
                 ("pipeline_id == ?", pipeline_id),
                 ("created_at > ?", created_after),
                 ("created_at < ?", created_before),
+                ('json_extract(metadata, \'$.orientation\') == ?', orientation)
             ]
             if x[1]
         ]
