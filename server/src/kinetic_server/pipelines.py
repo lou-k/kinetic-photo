@@ -5,7 +5,7 @@ from typing import Iterator, List, Optional, Tuple
 
 import pandas as pd
 import tqdm
-from disk_objectstore import Container
+from .object_store import ObjectStore
 
 from kinetic_server.steps.step import Step
 from kinetic_server.streams import StreamsApi
@@ -29,7 +29,7 @@ class PipelineLogger:
     """
 
     def __init__(
-        self, db: PipelineDb, objectstore: Container, pipeline_id: int, name: str
+        self, db: PipelineDb, objectstore: ObjectStore, pipeline_id: int, name: str
     ):
         self._db = db
         self._pipeline_id = pipeline_id
@@ -65,7 +65,7 @@ class PipelineLogger:
         self.logger.removeHandler(self.handler)
         # Save the log to the objectstore
         with open(self.logfile.name, mode="rb") as fin:
-            log_hash = self._objectstore.add_object(fin.read())
+            log_hash = self._objectstore.add(fin.read())
 
         # removes the temporary file
         self.logfile.close()
@@ -93,7 +93,7 @@ class PipelineLoggerFactory:
     This factory helps pipelines avoid passing around the PipelineDb and Container references.
     """
 
-    def __init__(self, db: PipelineDb, object_store: Container):
+    def __init__(self, db: PipelineDb, object_store: ObjectStore):
         self._db = db
         self._object_store = object_store
 

@@ -1,6 +1,6 @@
 # Wide on the server
-# frame_id: a5f25f1e-0b1c-11ee-bd9b-0242ac120005
-# server: http://192.168.86.102:8080
+#frame_id: a5f25f1e-0b1c-11ee-bd9b-0242ac120005
+#server: http://192.168.86.102:8080
 
 # Local wide
 frame_id: ee2551b6-0b1b-11ee-8e72-a02942aaea38

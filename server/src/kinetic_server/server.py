@@ -5,10 +5,10 @@ from typing import List
 
 from dataclasses_json import dataclass_json
 from dependency_injector.wiring import Provide, inject
-from disk_objectstore import Container as DiskContainer
+from .object_store import ObjectStore
 from flask import Flask, request
 
-from .common import Content, Frame, initialize_objectstore
+from .common import Content, Frame
 from .containers import Container
 from .frames import FramesApi
 
@@ -58,9 +58,9 @@ def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
 
 
 @inject
-def video(id: str, object_store: DiskContainer = Provide[Container.object_store]):
-    if object_store.has_object(id):
-        video_object = object_store.get_object_content(id)
+def video(id: str, object_store: ObjectStore = Provide[Container.object_store]):
+    if object_store.exists(id):
+        video_object = object_store.get(id)
         # TODO -- ensure that the content type is correct - maybe store it in the objectstore?
         return video_object, 200, {"Content-Type": "video/mp4"}
     else:
@@ -73,7 +73,6 @@ def create_server():
     app.container = container
     app.container.init_resources()
     app.container.wire(modules=[__name__])
-    initialize_objectstore(container.object_store.provided())
     app.add_url_rule("/frame/<id>", "frame", frame)
     app.add_url_rule("/video/<id>", "video", video)
     app.add_url_rule("/playlist/<id>.m3u8", "playlist", playlist)

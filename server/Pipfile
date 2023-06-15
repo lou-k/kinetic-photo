@@ -10,7 +10,6 @@ dependency-injector = {extras = ["yaml"], version = "*"}
 pandas = "*"
 dataclasses-json = "*"
 jsonpath-ng = "*"
-disk-objectstore = "*"
 flask = "*"
 tqdm = "*"
 uwsgi = "*"

@@ -4,7 +4,6 @@ import sqlite3
 
 from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
-from disk_objectstore import Container as DiskContainer
 
 from kinetic_server.frames import FramesApi
 from kinetic_server.uploads import UploadsApi
@@ -14,6 +13,7 @@ from .db import (ContentDb, DepthCacheDb, FramesDb, IntegrationsDb, PipelineDb,
                  StreamsDb, UploadsDb, WrappedConnection)
 from .depthcache import DepthCache
 from .integrations import IntegrationsApi
+from .object_store import ObjectStore
 from .pipelines import PipelineApi, PipelineLoggerFactory
 from .streams import StreamsApi
 
@@ -34,7 +34,7 @@ class Container(containers.DeclarativeContainer):
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
     )
     object_store = providers.ThreadLocalSingleton(
-        DiskContainer, config.objectstore.folder
+        ObjectStore, config.objectstore.folder
     )
 
     integrations_db = providers.Singleton(IntegrationsDb, database_connection)

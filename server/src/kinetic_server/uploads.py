@@ -6,7 +6,7 @@ from typing import List
 import magic
 import pandas as pd
 import PIL
-from disk_objectstore import Container
+from .object_store import ObjectStore
 from PIL import ExifTags, Image
 
 from .common import Upload
@@ -41,7 +41,7 @@ def get_exif_data(bytes: bytes) -> dict:
 
 
 class UploadsApi:
-    def __init__(self, db: UploadsDb, objectstore: Container):
+    def __init__(self, db: UploadsDb, objectstore: ObjectStore):
         self.db = db
         self.objectstore = objectstore
 
@@ -64,7 +64,7 @@ class UploadsApi:
         else:
             created_at = datetime.now()
 
-        hash = self.objectstore.add_object(file)
+        hash = self.objectstore.add(file)
 
         logging.info(f"Metadata is {type(metadata)}: " + str(metadata))
 

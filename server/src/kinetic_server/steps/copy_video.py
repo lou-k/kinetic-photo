@@ -68,8 +68,8 @@ class CopyVideo(ContentCreator):
                 )
                 return None
         # Load the video if it's an upload
-        elif os.has_object(m.identifier):
-            video_bytes = os.get_object_content(m.identifier)
+        elif os.exists(m.identifier):
+            video_bytes = os.get(m.identifier)
         else:
             logging.info(
                 f"Could not download or find a video file for {m.identifier} .."

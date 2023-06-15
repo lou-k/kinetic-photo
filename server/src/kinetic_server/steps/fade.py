@@ -179,12 +179,12 @@ class Fade(ContentAugmentor):
                 else:
                     logging.info(f"Keeping original resolution for {c.id} of {c.resolution.to_dict()}")
                 faded_bytes, video_duration = fade_video(
-                    os.get_object_content(c.id),
+                    os.get(c.id),
                     video_bitrate=self.video_bitrate,
                     fade_duration=self.fade_duration,
                     resolution=target_resolution
                 )
-                c.versions[ContentVersion.Faded] = os.add_object(faded_bytes)
+                c.versions[ContentVersion.Faded] = os.add(faded_bytes)
                 c.metadata['duration'] = video_duration
             except Exception as e:
                 logging.warning(f"Could not create faded video for {c.id}", exc_info=e)

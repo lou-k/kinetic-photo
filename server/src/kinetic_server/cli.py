@@ -4,9 +4,8 @@ import json
 import logging
 
 from dependency_injector.wiring import Provide, inject
-from disk_objectstore import Container as DiskContainer
+from .object_store import ObjectStore
 
-from .common import initialize_objectstore
 from .containers import Container
 from .frames import FramesApi
 from .integrations import IntegrationsApi, IntegrationType
@@ -167,7 +166,7 @@ def integrations_parser(app_subparsers: argparse._SubParsersAction):
 def pipelines(
     args,
     pipelines_api: PipelineApi = Provide[Container.pipeline_api],
-    objectstore: DiskContainer = Provide[Container.object_store],
+    objectstore: ObjectStore = Provide[Container.object_store],
     streams_api: StreamsApi = Provide[Container.streams_api],
 ) -> None:
     match args.action:
@@ -183,7 +182,7 @@ def pipelines(
         case "logs":
             run = pipelines_api._db.get_run(args.run_id)
             if run:
-                log = objectstore.get_object_content(run.log_hash).decode()
+                log = objectstore.get(run.log_hash).decode()
                 print(log)
             else:
                 logging.error(f"No pipeline run with id {args.run_id} found")
@@ -310,8 +309,7 @@ def main():
     container = Container()
     container.init_resources()
     container.wire(modules=[__name__])
-    initialize_objectstore(container.object_store.provided())
-
+    
     parser = argparse.ArgumentParser(
         prog="kinetic-cli", description="Command line interface for kinetic photos."
     )

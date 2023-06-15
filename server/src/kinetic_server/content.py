@@ -1,13 +1,13 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
-from disk_objectstore import Container
+from .object_store import ObjectStore
 from .common import Content, ContentVersion, Resolution
 from datetime import datetime
 
 
 class ContentApi:
-    def __init__(self, objectstore: Container):
+    def __init__(self, objectstore: ObjectStore):
         self.objectstore = objectstore
 
     def create(
@@ -21,8 +21,8 @@ class ContentApi:
         versions: Dict[ContentVersion, bytes] = {},
         pipeline_id: Optional[int] = None
     ) -> Content:
-        hash = self.objectstore.add_object(video_file)
-        versions = {k:self.objectstore.add_object(v) for k,v in versions.items()}
+        hash = self.objectstore.add(video_file)
+        versions = {k:self.objectstore.add(v) for k,v in versions.items()}
         versions[ContentVersion.Original] = hash
         # sqllite3 throws when reading back a timestamp with timezone info
         # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
