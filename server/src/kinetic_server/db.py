@@ -595,5 +595,5 @@ class PreRenderDb:
     def delete(self, id: int) -> None:
         with self.connection:
             self.connection.execute(
-                "DROP FROM pre_renders WHERE id = ?", (id,)
+                "DELETE FROM pre_renders WHERE id = ?", (id,)
             )
