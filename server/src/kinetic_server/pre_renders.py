@@ -54,7 +54,6 @@ class PreRenderApi:
                     + height
                     + "/ih))/2"
                 )
-                subprocess.call(["cat", f"{tmpfile.name}"])
                 cmd = [
                     "ffmpeg",
                     "-f",
@@ -63,8 +62,6 @@ class PreRenderApi:
                     "0",
                     "-i",
                     tmpfile.name,
-                    "-loglevel",
-                    "error",
                     "-hide_banner",
                     "-vf",
                     filter,
