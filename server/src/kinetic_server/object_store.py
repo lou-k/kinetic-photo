@@ -18,6 +18,9 @@ class ObjectStore:
     def get(self, hash: str) -> bytes:
         with open(self._hash_path(hash), "rb") as fin:
             return fin.read()
+
+    def remove(self, hash: str):
+        os.remove(self._hash_path(hash))
     
     def exists(self, hash: str) -> bool:
         return os.path.exists(self._hash_path(hash))

@@ -591,3 +591,9 @@ class PreRenderDb:
                 (frame_id, datetime.now(), video_hash, json.dumps(video_ids)),
             )
             return self.get_for_frame(frame_id, 1)[0]
+
+    def delete(self, id: int) -> None:
+        with self.connection:
+            self.connection.execute(
+                "DROP FROM pre_renders WHERE id = ?", (id,)
+            )

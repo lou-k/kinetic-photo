@@ -2,16 +2,17 @@ import argparse
 import itertools
 import json
 import logging
-
-from dependency_injector.wiring import Provide, inject
 import sys
-from .pre_renders import PreRenderApi
-from .object_store import ObjectStore
+
+import tqdm
+from dependency_injector.wiring import Provide, inject
 
 from .containers import Container
 from .frames import FramesApi
 from .integrations import IntegrationsApi, IntegrationType
+from .object_store import ObjectStore
 from .pipelines import PipelineApi
+from .pre_renders import PreRenderApi
 from .steps import list_steps
 from .streams import StreamsApi, StreamType
 from .uploads import UploadsApi
@@ -335,6 +336,15 @@ def prerenders(
                 video_bitrate=args.bitrate,
             )
             logging.info("Resulting Pre Render is:\n" + str(result.to_json()))
+        case "clean":
+            pre_renders = pre_render_api.db.get_for_frame(args.frame_id, sys.maxsize)[
+                1:
+            ]
+            logging.info(f"There are {len(pre_renders)} pre renders to clean.")
+            for p in tqdm.tqdm(pre_renders, total=len(pre_renders)):
+                pre_render_api.db.delete(p.id)
+                pre_render_api.os.remove(p.video_hash)
+            logging.info(f"Done cleaning frame {args.frame_id}.")
 
 
 def pre_renders_parser(app_subparsers: argparse._SubParsersAction):
@@ -361,6 +371,13 @@ def pre_renders_parser(app_subparsers: argparse._SubParsersAction):
     )
     list_parser.add_argument("frame_id", help="The frame to make the pre-render for.")
     list_parser.set_defaults(action="list")
+
+    clean_parser = subparsers.add_parser(
+        name="clean", help="Removes old pre-renders for a specific frame."
+    )
+    clean_parser.add_argument("frame_id", help="The frame to clean.")
+    clean_parser.set_defaults(action="clean")
+
     parser.set_defaults(func=prerenders)
 
 

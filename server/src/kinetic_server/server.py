@@ -7,10 +7,9 @@ from dataclasses_json import dataclass_json
 from dependency_injector.wiring import Provide, inject
 from flask import Flask, request
 
-from src.kinetic_server.db import PreRenderDb
-
 from .common import Content, Frame
 from .containers import Container
+from .db import PreRenderDb
 from .frames import FramesApi
 from .object_store import ObjectStore
 
