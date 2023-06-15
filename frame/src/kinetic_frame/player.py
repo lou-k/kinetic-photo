@@ -18,6 +18,7 @@ def start_player(player_cmd: List[str], playlist_file: str):
 
 def reset_playlist(frame: dict, client: KineticClient, storage_directory: str, playlist_file: str):
     version = frame['frame']['options'].get('preffered_version', 'original') if 'options' in frame['frame'] else 'original'
+    logging.info(f"version is {version}")
     object_ids = [c["versions"][version]  if version in c['versions'] else c['versions']['original'] for c in frame["content"]]
     object_ids = download_new_objects(client, object_ids, storage_directory)
     options = frame['frame']['options']

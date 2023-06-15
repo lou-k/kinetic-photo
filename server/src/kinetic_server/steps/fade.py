@@ -96,6 +96,11 @@ def fade_video(
         total_frames = int(time_info['streams'][0]['nb_read_frames'])
         video_duration = float(time_info['format']['duration'])
         with NamedTemporaryFile(suffix=".mp4") as resultfile:
+
+            filter = f"fade=t=in:s=0:n={frames_to_fade},fade=t=out:s={total_frames - frames_to_fade}:n={frames_to_fade}"
+            if resolution:
+                filter += f",scale={resolution.width}:{resolution.height}"
+
             cmd = [
                 "ffmpeg",
                 "-i",
@@ -104,15 +109,7 @@ def fade_video(
                 "error",
                 "-hide_banner",
                 "-vf",
-                f"fade=t=in:s=0:n={frames_to_fade},fade=t=out:s={total_frames - frames_to_fade}:n={frames_to_fade}"
-            ]
-            if resolution:
-                cmd.extend([
-                    "-vf",
-                    f"scale={resolution.width}:{resolution.height}"
-                ])
-
-            cmd.extend([
+                filter,
                 "-b:v",
                 f"{video_bitrate}k",
                 "-c:a",
@@ -123,7 +120,7 @@ def fade_video(
                 "+faststart",
                 "-y",
                 resultfile.name,
-            ])
+            ]
             logging.info(f"Fading video with command:" + " ".join(cmd))
             subprocess.run(cmd, check=True)
             with open(resultfile.name, "rb") as fin:
