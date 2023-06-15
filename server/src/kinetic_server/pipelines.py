@@ -171,7 +171,7 @@ class Pipeline:
                     for step in self.steps:
                         content = step(content)
                         if not content:
-                            logging.debug(
+                            logger.debug(
                                 f"Step {step.name} returned None for media {media.identifier}..."
                             )
                             break
@@ -199,7 +199,7 @@ class Pipeline:
                 raise Exception(
                     f"Pipeline {self.name} ({self.id}) failed all media -- considering this run a failure. See logs for details."
                 )
-            logging.info(f"Created {num_new} new kinetic photos!")
+            logger.info(f"Created {num_new} new kinetic photos!")
 
 
 class PipelineApi:
