@@ -4,6 +4,8 @@ import json
 import logging
 
 from dependency_injector.wiring import Provide, inject
+
+from .pre_renders import PreRenderApi
 from .object_store import ObjectStore
 
 from .containers import Container
@@ -304,6 +306,37 @@ def uploads_parser(app_subparsers: argparse._SubParsersAction):
     remove_parser.add_argument("id", help="The id of the upload to remove")
     parser.set_defaults(func=uploads)
 
+@inject
+def prerenders(args, pre_render_api: PreRenderApi = Provide[Container.prerender_api]) -> None:
+    match args.action:
+        case "list":
+            logging.info(f"Pre renders available for {args.frame_id}:\n" + 
+                         "\n".join(
+                [pr.to_json() for pr in  pre_render_api.db.get_for_frame(args.frame_id)]
+                         )
+                         )
+        case "create":
+            result = pre_render_api.render_if_necessary(
+                frame_id = args.frame_id,
+                width = args.width,
+                height = args.height,
+                video_bitrate = args.bitrate
+            )
+            logging.info("Resulting Pre Render is:\n" + str(result) )
+
+def pre_renders_parser(app_subparsers: argparse._SubParsersAction):
+    parser = app_subparsers.add_parser(name="pre_renders", help="Manage frame pre-renders.")
+    subparsers = parser.add_subparsers(metavar="action", required=True)
+    add_parser = subparsers.add_parser(name="create", help="Creates a pre render for a frame")
+    add_parser.add_argument("frame_id", help="The frame to make the pre-render for.")
+    add_parser.add_argument("--width", type=int, default=1920, help="The width of the resulting video")
+    add_parser.add_argument("--height", type=int, default=1080, help="The height of the resulting video")
+    add_parser.add_argument("--bitrate", type=int, default=1200, help="The bitrate of the resulting video")
+    add_parser.set_defaults(action="create")
+    list_parser = subparsers.add_parser(name="list", help="Lists pre renders for a frame.")
+    list_parser.add_argument("frame_id", help="The frame to make the pre-render for.")
+    list_parser.set_defaults(action="list")
+    parser.set_defaults(func=prerenders)
 
 def main():
     container = Container()
@@ -319,6 +352,7 @@ def main():
     pipelines_parser(subparsers)
     frames_parser(subparsers)
     uploads_parser(subparsers)
+    pre_renders_parser(subparsers)
 
     args = parser.parse_args()
     args.func(args)

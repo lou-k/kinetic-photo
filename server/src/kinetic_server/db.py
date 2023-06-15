@@ -3,11 +3,13 @@ import json
 import logging
 import os
 import sqlite3
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .common import Content, DepthImage, Frame, PipelineRun, PipelineStatus, Resolution, Upload
+from .common import (Content, DepthImage, Frame, PipelineRun, PipelineStatus,
+                     PreRender, Resolution, Upload)
 from .steps import Step, list_steps, step_adapter, step_converter
 
 
@@ -157,9 +159,13 @@ class ContentDb:
             # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
             # Just check that the values passed don't have timezone info
             if c.created_at.tzinfo is not None:
-                raise Exception(f"Due to an sqlite bug, created_at must have no timezone")
+                raise Exception(
+                    f"Due to an sqlite bug, created_at must have no timezone"
+                )
             if c.processed_at.tzinfo is not None:
-                raise Exception(f"Due to an sqlite bug, processed_at must have no timezone")
+                raise Exception(
+                    f"Due to an sqlite bug, processed_at must have no timezone"
+                )
             self.connection.execute(
                 "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, pipeline_id, versions) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -172,7 +178,7 @@ class ContentDb:
                     metadata,
                     c.stream_id,
                     c.pipeline_id,
-                    versions
+                    versions,
                 ),
             )
 
@@ -184,7 +190,7 @@ class ContentDb:
         pipeline_id: Optional[int] = None,
         created_after: Optional[str] = None,
         created_before: Optional[str] = None,
-        orientation: Optional[str] = None
+        orientation: Optional[str] = None,
     ) -> List[Content]:
         conditionals = [
             x
@@ -194,7 +200,7 @@ class ContentDb:
                 ("pipeline_id == ?", pipeline_id),
                 ("created_at > ?", created_after),
                 ("created_at < ?", created_before),
-                ('json_extract(metadata, \'$.orientation\') == ?', orientation)
+                ("json_extract(metadata, '$.orientation') == ?", orientation),
             ]
             if x[1]
         ]
@@ -220,7 +226,7 @@ class ContentDb:
                 pipeline_id=pipeline_id,
                 metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
-                versions={k:v for k,v in json.loads(versions).items()}
+                versions={k: v for k, v in json.loads(versions).items()},
             )
             for (
                 id,
@@ -232,7 +238,7 @@ class ContentDb:
                 source_id,
                 stream_id,
                 width,
-                versions
+                versions,
             ) in results
         ]
 
@@ -302,9 +308,7 @@ class PipelineDb:
                 "SELECT * FROM pipeline_runs", self.connection, index_col="id"
             )
 
-    def get(
-        self, pipeline_id: int
-    ) -> Optional[Tuple[int, int, str, List[Step]]]:
+    def get(self, pipeline_id: int) -> Optional[Tuple[int, int, str, List[Step]]]:
         with self.connection:
             res = self.connection.execute(
                 "SELECT * FROM pipelines WHERE id = ?", (pipeline_id,)
@@ -317,10 +321,13 @@ class PipelineDb:
 
     def get_steps(self, pipeline_id: int) -> List[Step]:
         with self.connection:
-            return [s[0] for s in self.connection.execute(
-                "SELECT step FROM pipeline_steps WHERE pipeline_id = ? ORDER BY id ASC",
-                (pipeline_id,),
-            ).fetchall()]
+            return [
+                s[0]
+                for s in self.connection.execute(
+                    "SELECT step FROM pipeline_steps WHERE pipeline_id = ? ORDER BY id ASC",
+                    (pipeline_id,),
+                ).fetchall()
+            ]
 
     def create(self, name: str, stream_id: int) -> int:
         """
@@ -330,7 +337,7 @@ class PipelineDb:
             cursor = self.connection.cursor()
             cursor.execute(
                 "INSERT INTO pipelines(name, stream_id) VALUES(?, ?)",
-                (name,stream_id),
+                (name, stream_id),
             )
             return cursor.lastrowid
 
@@ -429,7 +436,7 @@ class UploadsDb:
         Returns:
             Optional[Upload]: The upload if found or None otherwise
         """
-        res =  self.query(1, id = id)
+        res = self.query(1, id=id)
         if len(res):
             return res[0]
         else:
@@ -456,18 +463,16 @@ class UploadsDb:
             # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
             # Just check that the values passed don't have timezone info
             if u.created_at.tzinfo is not None:
-                raise Exception(f"Due to an sqlite bug, created_at must have no timezone")
+                raise Exception(
+                    f"Due to an sqlite bug, created_at must have no timezone"
+                )
             if u.uploaded_at.tzinfo is not None:
-                raise Exception(f"Due to an sqlite bug, uploaded_at must have no timezone")
+                raise Exception(
+                    f"Due to an sqlite bug, uploaded_at must have no timezone"
+                )
             self.connection.execute(
                 "REPLACE INTO uploads (id, created_at, uploaded_at, metadata, content_type) VALUES(?, ?, ?, ?, ?)",
-                (
-                    u.id,
-                    u.created_at,
-                    u.uploaded_at,
-                    metadata,
-                    u.content_type
-                ),
+                (u.id, u.created_at, u.uploaded_at, metadata, u.content_type),
             )
 
     def query(
@@ -477,7 +482,7 @@ class UploadsDb:
         created_before: Optional[str] = None,
         uploaded_after: Optional[str] = None,
         uploaded_before: Optional[str] = None,
-        id: Optional[str] = None
+        id: Optional[str] = None,
     ) -> List[Upload]:
         """Queries for uploads from the database.
 
@@ -516,25 +521,17 @@ class UploadsDb:
                 created_at=created_at,
                 uploaded_at=uploaded_at,
                 metadata=json.loads(metadata) if metadata else None,
-                content_type = content_type
+                content_type=content_type,
             )
-            for (
-                id,
-                created_at,
-                uploaded_at,
-                metadata,
-                content_type
-            ) in results
+            for (id, created_at, uploaded_at, metadata, content_type) in results
         ]
-    
-class DepthCacheDb:
 
+
+class DepthCacheDb:
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
 
-    def get(
-        self, id: int
-    ) -> Optional[DepthImage]:
+    def get(self, id: int) -> Optional[DepthImage]:
         """
         Gets a depth image from the datastore.
         """
@@ -545,19 +542,52 @@ class DepthCacheDb:
         return DepthImage(*res) if res else None
 
     def save(self, d: DepthImage):
-        """Stores a depth image in the database
-        """
+        """Stores a depth image in the database"""
         with self.connection:
             # sqllite3 throws when reading back a timestamp with timezone info
             # (see https://stackoverflow.com/questions/48614488/python-sqlite-valueerror-invalid-literal-for-int-with-base-10-b5911)
             # Just check that the values passed don't have timezone info
             if d.extracted_at.tzinfo is not None:
-                raise Exception(f"Due to an sqlite bug, extracted_at must have no timezone")
+                raise Exception(
+                    f"Due to an sqlite bug, extracted_at must have no timezone"
+                )
             self.connection.execute(
                 "REPLACE INTO depth_cache (id, extracted_at, depth_hash) VALUES(?, ?, ?)",
-                (
-                    d.id,
-                    d.extracted_at,
-                    d.depth_hash
-                ),
+                (d.id, d.extracted_at, d.depth_hash),
             )
+
+
+class PreRenderDb:
+    def __init__(self, connection: sqlite3.Connection):
+        self.connection = connection
+
+    def get_for_frame(self, frame_id: str, limit: int) -> List[PreRender]:
+        with self.connection:
+            return [
+                PreRender(
+                    id=id,
+                    frame_id=frame_id,
+                    created_at=created_at,
+                    video_hash=video_hash,
+                    video_ids=json.loads(video_ids),
+                )
+                for (
+                    id,
+                    frame_id,
+                    created_at,
+                    video_hash,
+                    video_ids,
+                ) in self.connection.execute(
+                    "SELECT * FROM pre_renders WHERE frame_id = ? ORDER BY created_at DESC limit ?",
+                    (frame_id, limit),
+                ).fetchall()
+            ]
+
+    def create(self, frame_id: str, video_hash: str, video_ids: List[str]) -> PreRender:
+        """Stores a depth image in the database"""
+        with self.connection:
+            self.connection.execute(
+                "INSERT INTO pre_renders (frame_id, created_at, video_hash, video_ids) VALUES(?, ?, ?, ?)",
+                (frame_id, datetime.now(), video_hash, json.dumps(video_ids)),
+            )
+            return self.get_for_frame(frame_id, 1)[0]

@@ -5,11 +5,12 @@ import sqlite3
 from dependency_injector import containers, providers
 from dependency_injector.wiring import Provide, inject
 
-from kinetic_server.frames import FramesApi
-from kinetic_server.uploads import UploadsApi
+from .frames import FramesApi
+from .uploads import UploadsApi
+from .pre_renders import PreRenderApi
 
 from .content import ContentApi
-from .db import (ContentDb, DepthCacheDb, FramesDb, IntegrationsDb, PipelineDb,
+from .db import (ContentDb, DepthCacheDb, FramesDb, IntegrationsDb, PipelineDb, PreRenderDb,
                  StreamsDb, UploadsDb, WrappedConnection)
 from .depthcache import DepthCache
 from .integrations import IntegrationsApi
@@ -65,6 +66,8 @@ class Container(containers.DeclarativeContainer):
     depth_db = providers.Singleton(DepthCacheDb, database_connection)
     depth_cache = providers.Singleton(DepthCache, depth_db, object_store)
 
+    prerender_db = providers.Singleton(PreRenderDb, database_connection)
+    prerender_api = providers.Singleton(PreRenderApi, prerender_db, object_store, frames_api)
 
 @inject
 def example(api=Provide[Container.integrations_api]):

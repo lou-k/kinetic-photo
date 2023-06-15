@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
@@ -133,4 +133,19 @@ class DepthImage:
         )
     )
     depth_hash: str # The object hash of this depth image in the object store
-    
+
+
+@dataclass_json
+@dataclass
+class PreRender:
+    id: int
+    frame_id: str
+    created_at:  datetime = field(  # When the depth was extracted
+        metadata=config(
+            encoder=datetime.isoformat,
+            decoder=datetime.fromisoformat,
+            mm_field=fields.DateTime(format="iso"),
+        )
+    )
+    video_hash: str
+    video_ids: List[str]

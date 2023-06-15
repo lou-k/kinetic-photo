@@ -1,16 +1,18 @@
 import argparse
 import sys
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from dataclasses_json import dataclass_json
 from dependency_injector.wiring import Provide, inject
-from .object_store import ObjectStore
 from flask import Flask, request
+
+from src.kinetic_server.db import PreRenderDb
 
 from .common import Content, Frame
 from .containers import Container
 from .frames import FramesApi
+from .object_store import ObjectStore
 
 
 #
@@ -21,6 +23,7 @@ from .frames import FramesApi
 class GetFrameResult:
     frame: Frame
     content: List[Content]
+    pre_render: Optional[str]
 
 
 #
@@ -32,17 +35,20 @@ class GetFrameResult:
 def frame(
     id: str,
     frames_api: FramesApi = Provide[Container.frames_api],
+    prerender_db: PreRenderDb = Provide[Container.prerender_db],
 ):
     frame = frames_api.get(id)
     content = frames_api.get_content_for(id)
-    resp = GetFrameResult(frame=frame, content=content)
+    pre_renders = prerender_db.get_for_frame(frame_id=id, limit=1)
+    pre_render_hash = pre_renders[0].video_hash if pre_renders else None
+    resp = GetFrameResult(frame=frame, content=content, pre_render=pre_render_hash)
     return resp.to_dict()
 
 
 @inject
 def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
     if id == "all":
-        version="faded"
+        version = "faded"
         content = frames_api._content_db.query(sys.maxsize)
     else:
         frame = frames_api.get(id)
@@ -51,7 +57,11 @@ def playlist(id: str, frames_api: FramesApi = Provide[Container.frames_api]):
     res = "#EXTM3U\n"
     for c in content:
         id = c.versions.get(version, c.id)
-        duration = str(int(c.metadata['duration'])) if c.metadata and 'duration' in c.metadata else ""
+        duration = (
+            str(int(c.metadata["duration"]))
+            if c.metadata and "duration" in c.metadata
+            else ""
+        )
         res += f"#EXINF:{duration}\n{request.url_root}video/{id}\n"
     res += "#EXT-X-ENDLIST"
     return res, 200, {"Content-Type": "video/mp4"}

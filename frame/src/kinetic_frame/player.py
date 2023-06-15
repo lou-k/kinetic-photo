@@ -17,9 +17,14 @@ def start_player(player_cmd: List[str], playlist_file: str):
     return Popen(cmd, stderr=STDOUT)
 
 def reset_playlist(frame: dict, client: KineticClient, storage_directory: str, playlist_file: str):
-    version = frame['frame']['options'].get('preffered_version', 'original') if 'options' in frame['frame'] else 'original'
-    logging.info(f"version is {version}")
-    object_ids = [c["versions"][version]  if version in c['versions'] else c['versions']['original'] for c in frame["content"]]
+    if 'pre_render' in frame:
+        # There is a pre-rendered video available for this frame. Use that instead.
+        object_ids = [frame['pre_render']]
+        logging.info(f"Using pre-rendered video {frame['pre_render']}")
+    else:
+        version = frame['frame']['options'].get('preffered_version', 'original') if 'options' in frame['frame'] else 'original'
+        logging.info(f"version is {version}")
+        object_ids = [c["versions"][version]  if version in c['versions'] else c['versions']['original'] for c in frame["content"]]
     object_ids = download_new_objects(client, object_ids, storage_directory)
     options = frame['frame']['options']
     if "shuffle" in options and options["shuffle"]:
