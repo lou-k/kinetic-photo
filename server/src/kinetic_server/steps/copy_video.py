@@ -2,28 +2,8 @@ import logging
 import urllib.request
 from typing import Optional, Tuple
 
-from kinetic_server.common import Content, Orientation, Resolution, StreamMedia
+from kinetic_server.common import Content, StreamMedia, get_resolution_and_orientation
 from kinetic_server.steps.step import ContentCreator
-
-
-def get_resolution_and_orientation(
-    m: StreamMedia,
-) -> Tuple[Optional[Resolution], Optional[Orientation]]:
-    if "width" in m.metadata and "height" in m.metadata:
-        resolution = Resolution(
-            int(m.metadata["width"]),
-            int(m.metadata["height"]),
-        )
-        if resolution.width > resolution.height:
-            orientation = Orientation.Wide
-        elif resolution.height > resolution.width:
-            orientation = Orientation.Tall
-        else:
-            orientation = Orientation.Square
-        return (resolution, orientation)
-    else:
-        return None, None
-
 
 class CopyVideo(ContentCreator):
     """A simple creator that just copies video from streams into the content library."""

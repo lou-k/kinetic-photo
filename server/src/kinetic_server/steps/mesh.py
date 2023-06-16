@@ -59,34 +59,30 @@ class ComputeMesh(Step):
 
         # See if this image already has a mesh image
         mesh = auxiliary_cache.db.get(media.identifier, type=MESH_TYPE)
-        if not mesh:
+        if mesh:
+            logging.info(f"{media.identifier} already hash mesh {mesh.file_hash}!")
+        else:
             # Compute the mesh image
-            try:
-                logging.info(
-                    f"Computing mesh for {media.identifier} using {self.hf_src}, this may take a while...."
-                )
-                if "depth_map" not in media.metadata:
-                    raise Exception(f"Media {media.identifier} has no depth map...")
-                depth_image_path = auxiliary_cache.os._hash_path(media.metadata["depth_map"])
-                start_t = datetime.now()
-                client = get_client(src=self.hf_src, hf_token=self.hf_token)
-                result = client.predict(
-                    media.url, depth_image_path, api_name=self.hf_api_name
-                )
-                end_t = datetime.now()
-                logging.info(
-                    f"Computing the mesh for {media.identifier} took {str(end_t-start_t)}, result: {result}"
-                )
+            logging.info(
+                f"Computing mesh for {media.identifier} using {self.hf_src}, this may take a while...."
+            )
+            if "depth_map" not in media.metadata:
+                raise Exception(f"Media {media.identifier} has no depth map...")
+            depth_image_path = auxiliary_cache.os._hash_path(media.metadata["depth_map"])
+            start_t = datetime.now()
+            client = get_client(src=self.hf_src, hf_token=self.hf_token)
+            result = client.predict(
+                media.url, depth_image_path, api_name=self.hf_api_name
+            )
+            end_t = datetime.now()
+            logging.info(
+                f"Computing the mesh for {media.identifier} took {str(end_t-start_t)}, result: {result}"
+            )
 
-                with open(result, "rb") as fin:
-                    mesh_bytes = fin.read()
-                mesh = auxiliary_cache.save(media.identifier, MESH_TYPE, mesh_bytes)
-                os.remove(result)
-            except Exception as e:
-                logging.warning(
-                    f"Could not compute mesh for {media.identifier}:", exc_info=e
-                )
-                return media
+            with open(result, "rb") as fin:
+                mesh_bytes = fin.read()
+            mesh = auxiliary_cache.save(media.identifier, MESH_TYPE, mesh_bytes)
+            os.remove(result)
 
         media.metadata["mesh"] = mesh.file_hash
         return media

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
@@ -150,3 +150,22 @@ class PreRender:
     )
     video_hash: str
     video_ids: List[str]
+
+
+def get_resolution_and_orientation(
+    m: StreamMedia,
+) -> Tuple[Optional[Resolution], Optional[Orientation]]:
+    if "width" in m.metadata and "height" in m.metadata:
+        resolution = Resolution(
+            int(m.metadata["width"]),
+            int(m.metadata["height"]),
+        )
+        if resolution.width > resolution.height:
+            orientation = Orientation.Wide
+        elif resolution.height > resolution.width:
+            orientation = Orientation.Tall
+        else:
+            orientation = Orientation.Square
+        return (resolution, orientation)
+    else:
+        return None, None

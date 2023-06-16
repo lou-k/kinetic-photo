@@ -1,13 +1,13 @@
-
 import inspect
 import sys
 
 from .copy_video import CopyVideo
+from .depth import ComputeDepth
 from .fade import Fade
 from .filter import Filter
 from .filter_seen import FilterSeen
-from .depth import ComputeDepth
 from .mesh import ComputeMesh
+from .photo_inpainting import PhotoInpainting
 from .step import *
 
 
@@ -20,7 +20,8 @@ def list_steps() -> dict:
     return {
         name: obj
         for name, obj in inspect.getmembers(sys.modules[__name__], inspect.isclass)
-        if issubclass(obj, Step) and name not in set(["Step", "ContentCreator", "ContentAugmentor"])
+        if issubclass(obj, Step)
+        and name not in set(["Step", "ContentCreator", "ContentAugmentor"])
     }
 
 
