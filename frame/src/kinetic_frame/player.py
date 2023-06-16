@@ -17,7 +17,7 @@ def start_player(player_cmd: List[str], playlist_file: str):
     return Popen(cmd, stderr=STDOUT)
 
 def reset_playlist(frame: dict, client: KineticClient, storage_directory: str, playlist_file: str):
-    if 'pre_render' in frame:
+    if 'pre_render' in frame and str(frame['pre_render']) != "None":
         # There is a pre-rendered video available for this frame. Use that instead.
         object_ids = [frame['pre_render']]
         logging.info(f"Using pre-rendered video {frame['pre_render']}")
@@ -87,7 +87,7 @@ def main():
                 logging.error(f"Could not get frame id {frame_id}, trying again after {config['poll_interval']}ms...", exc_info=e)
 
         if frame and frame != previous_frame:
-            previous_frame = frame        
+            previous_frame = frame
             reset_playlist(previous_frame, client, storage_directory, playlist_file)
             if subprocess_pid:
                 stop_subprocess(subprocess_pid)

@@ -1,10 +1,10 @@
 # Wide on the server
-#frame_id: a5f25f1e-0b1c-11ee-bd9b-0242ac120005
-#server: http://192.168.86.102:8080
+frame_id: a5f25f1e-0b1c-11ee-bd9b-0242ac120005
+server: http://192.168.86.102:8080
 
 # Local wide
-frame_id: 9c26c648-0b1a-11ee-8e72-a02942aaea38
-server: http://localhost:8080
+# frame_id: 9c26c648-0b1a-11ee-8e72-a02942aaea38
+# server: http://localhost:8080
 
 # The following likely do not need to be changed
 storage_directory: dev-media-cache
