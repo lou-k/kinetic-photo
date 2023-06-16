@@ -7,6 +7,7 @@ from .fade import Fade
 from .filter import Filter
 from .filter_seen import FilterSeen
 from .depth import ComputeDepth
+from .mesh import ComputeMesh
 from .step import *
 
 

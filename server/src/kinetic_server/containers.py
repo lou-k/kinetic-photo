@@ -10,9 +10,9 @@ from .uploads import UploadsApi
 from .pre_renders import PreRenderApi
 
 from .content import ContentApi
-from .db import (ContentDb, DepthCacheDb, FramesDb, IntegrationsDb, PipelineDb, PreRenderDb,
+from .db import (ContentDb, AuxiliaryCacheDb, FramesDb, IntegrationsDb, PipelineDb, PreRenderDb,
                  StreamsDb, UploadsDb, WrappedConnection)
-from .depthcache import DepthCache
+from .auxiliarycache import AuxiliaryCache
 from .integrations import IntegrationsApi
 from .object_store import ObjectStore
 from .pipelines import PipelineApi, PipelineLoggerFactory
@@ -63,8 +63,8 @@ class Container(containers.DeclarativeContainer):
     frames_db = providers.Singleton(FramesDb, database_connection)
     frames_api = providers.Singleton(FramesApi, frames_db, content_db)
 
-    depth_db = providers.Singleton(DepthCacheDb, database_connection)
-    depth_cache = providers.Singleton(DepthCache, depth_db, object_store)
+    auxiliary_db = providers.Singleton(AuxiliaryCacheDb, database_connection)
+    auxiliary_cache = providers.Singleton(AuxiliaryCache, auxiliary_db, object_store)
 
     prerender_db = providers.Singleton(PreRenderDb, database_connection)
     prerender_api = providers.Singleton(PreRenderApi, prerender_db, object_store, frames_api)

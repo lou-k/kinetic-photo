@@ -123,16 +123,17 @@ class Upload:
 
 @dataclass_json
 @dataclass
-class DepthImage:
-    id: str # The source_id (i.e., identifier from stream media) where this depth was created from
-    extracted_at:  datetime = field(  # When the depth was extracted
+class AuxiliaryData:
+    id: str # The source_id (i.e., identifier from stream media) that this data was computed for
+    computed_at:  datetime = field(  # When the data was computed
         metadata=config(
             encoder=datetime.isoformat,
             decoder=datetime.fromisoformat,
             mm_field=fields.DateTime(format="iso"),
         )
     )
-    depth_hash: str # The object hash of this depth image in the object store
+    type: str
+    file_hash: str # The object hash of this depth image in the object store
 
 
 @dataclass_json
