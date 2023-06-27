@@ -20,10 +20,8 @@ def download_video(client: KineticClient, id: str, directory: str) -> bool:
         bool: True if the video was successfully downloaded, false otherwise.
     """
     try:
-        bytes = client.video(id)
         filename = os.path.join(directory, id)
-        with open(filename, "wb") as fout:
-            fout.write(bytes)
+        client.download_video(id, filename)
         return True
     except Exception as e:
         logging.error(f"Could not download video {id}", e)

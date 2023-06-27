@@ -60,3 +60,10 @@ class KineticClient:
         resp = self.session.get(url=f"{self.host}/video/{id}")
         resp.raise_for_status()
         return resp.content
+    
+    def download_video(self, id: str, filename: str) -> None:
+        with self.session.get(url=f"{self.host}/video/{id}") as r:
+            r.raise_for_status()
+            with open(filename, 'wb') as fout:
+                for chunk in r.iter_content(chunk_size=10*1024):
+                    fout.write(chunk)
