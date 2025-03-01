@@ -6,16 +6,17 @@ name = "pypi"
 [packages]
 pyyaml = "*"
 gphotospy = "*"
-dependency-injector = {extras = ["yaml"], version = "*"}
+dependency-injector = {extras = ["yaml"] }
 pandas = "*"
 dataclasses-json = "*"
 jsonpath-ng = "*"
 flask = "*"
 tqdm = "*"
-uwsgi = "*"
 python-magic = "*"
 pillow = "*"
 gradio-client = "*"
+setuptools = "*"
+uwsgi = "*"
 
 [dev-packages]
 ipython = "*"
