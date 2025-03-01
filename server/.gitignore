@@ -160,5 +160,4 @@ cython_debug/
 #.idea/
 .secret/*
 dev.db
-.vscode
 objectstore-dev

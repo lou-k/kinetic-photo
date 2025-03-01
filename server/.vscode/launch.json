@@ -1,0 +1,26 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Server CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "kinetic_server.cli",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": "${input:cli-arguments}"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cli-arguments",
+            "type": "promptString",
+            "description": "Arguments to the cli"
+        }
+    ]
+}
