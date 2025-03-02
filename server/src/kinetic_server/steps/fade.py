@@ -175,7 +175,12 @@ class Fade(ContentAugmentor):
                         logging.info(f"{self.max_shortside_res} > {shortside}, scale = {scale}")
                 target_resolution = Resolution(int(width*scale), int(height*scale)) if scale else None
                 if target_resolution:
-                    logging.warn(f"Rescaling media {c.id} from {c.resolution.to_dict()} to {target_resolution.to_dict()}")
+                    # ensure the new dimensions are divisible by 2
+                    if target_resolution.width % 2:
+                        target_resolution.width -= 1
+                    if target_resolution.height % 2:
+                        target_resolution.height -=1
+                    logging.warning(f"Rescaling media {c.id} from {c.resolution.to_dict()} to {target_resolution.to_dict()}")
                 else:
                     logging.info(f"Keeping original resolution for {c.id} of {c.resolution.to_dict()}")
                 faded_bytes, video_duration = fade_video(
