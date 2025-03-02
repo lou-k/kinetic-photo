@@ -1,5 +1,5 @@
 db:
-  database: "file:dev.db"
+  database: "file:dev/database.db"
 
 objectstore:
-  folder: objectstore-dev
+  folder: dev/objectstore
