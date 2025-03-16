@@ -10,8 +10,17 @@ from .uploads import UploadsApi
 from .pre_renders import PreRenderApi
 
 from .content import ContentApi
-from .db import (ContentDb, AuxiliaryCacheDb, FramesDb, IntegrationsDb, PipelineDb, PreRenderDb,
-                 StreamsDb, UploadsDb, WrappedConnection)
+from .db import (
+    ContentDb,
+    AuxiliaryCacheDb,
+    FramesDb,
+    IntegrationsDb,
+    PipelineDb,
+    PreRenderDb,
+    StreamsDb,
+    UploadsDb,
+    WrappedConnection,
+)
 from .auxiliarycache import AuxiliaryCache
 from .integrations import IntegrationsApi
 from .object_store import ObjectStore
@@ -67,7 +76,10 @@ class Container(containers.DeclarativeContainer):
     auxiliary_cache = providers.Singleton(AuxiliaryCache, auxiliary_db, object_store)
 
     prerender_db = providers.Singleton(PreRenderDb, database_connection)
-    prerender_api = providers.Singleton(PreRenderApi, prerender_db, object_store, frames_api)
+    prerender_api = providers.Singleton(
+        PreRenderApi, prerender_db, object_store, frames_api
+    )
+
 
 @inject
 def example(api=Provide[Container.integrations_api]):

@@ -10,17 +10,18 @@ dependency-injector = {extras = ["yaml"] }
 pandas = "*"
 dataclasses-json = "*"
 jsonpath-ng = "*"
-flask = "*"
 tqdm = "*"
 python-magic = "*"
 pillow = "*"
 gradio-client = "*"
 setuptools = "*"
-uwsgi = "*"
+fastapi = "*"
+uvicorn = "*"
 
 [dev-packages]
 ipython = "*"
 pdoc3 = "*"
+black = "*"
 
 [requires]
 python_version = "3.11"

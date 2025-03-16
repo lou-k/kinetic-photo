@@ -18,8 +18,8 @@ RUN cd /tmp/kinetic_server && \
 
 COPY config.yml /etc/kinetic-photo/server/config.yml
 RUN mkdir -p /var/kinetic-photo/server/
-CMD [ \
-    "uwsgi", \
-    "--socket", "0.0.0.0:8080", \
-    "--protocol", "http", \
-    "--wsgi", "kinetic_server.wsgi:app" ]
+ENTRYPOINT [ \
+    "uvicorn", \
+    "kinetic_server.asgi:app", \
+    "--host", "0.0.0.0", \
+    "--port", "8080" ]

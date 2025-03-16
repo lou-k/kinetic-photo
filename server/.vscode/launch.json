@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Server CLI",
+            "name": "Debug CLI",
             "type": "debugpy",
             "request": "launch",
             "module": "kinetic_server.cli",
@@ -14,7 +14,17 @@
                 "PYTHONPATH": "${workspaceFolder}/src"
             },
             "args": "${input:cli-arguments}"
-        }
+        },
+        {
+            "name": "Debug Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "kinetic_server.server",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
     ],
     "inputs": [
         {

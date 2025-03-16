@@ -1,3 +1,7 @@
+"""
+Provides a command line interface (CLI) for managing content in kinetic photo server
+
+"""
 import argparse
 import itertools
 import json
