@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from . import endpoints
 from .containers import Container
+from . import frontend
 
 
 #
@@ -16,8 +17,9 @@ def create_server() -> FastAPI:
     app = FastAPI(title="Kinetic Photo Server")
     app.container = container
     app.container.init_resources()
-    app.container.wire(modules=[__name__, ".endpoints"])
+    app.container.wire(modules=[__name__, ".endpoints", ".frontend"])
     app.include_router(endpoints.router)
+    frontend.init(app)
 
     return app
 

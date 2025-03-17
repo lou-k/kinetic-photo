@@ -17,6 +17,7 @@ gradio-client = "*"
 setuptools = "*"
 fastapi = "*"
 uvicorn = "*"
+nicegui = "*"
 
 [dev-packages]
 ipython = "*"
