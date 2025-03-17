@@ -186,6 +186,7 @@ class ContentDb:
     def query(
         self,
         limit: int,
+        skip: Optional[int] = None,
         source_id: Optional[str] = None,
         stream_id: Optional[int] = None,
         pipeline_id: Optional[int] = None,
@@ -214,6 +215,10 @@ class ContentDb:
             query += "WHERE " + where_clause
         query += " ORDER BY created_at DESC LIMIT ?"
         parameters += (limit,)
+
+        if skip:
+            query += " OFFSET ?"
+            parameters += (skip,)
 
         with self.connection:
             results = self.connection.execute(query, parameters).fetchall()

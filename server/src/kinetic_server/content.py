@@ -1,5 +1,4 @@
-from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from .object_store import ObjectStore
 from .common import Content, ContentVersion, Resolution
