@@ -55,7 +55,19 @@ class CopyVideo(ContentCreator):
                 f"Could not download or find a video file for {m.identifier} .."
             )
             return None
-
+        
+        # Get the video thumbnail
+        thumbnail_bytes = None
+        if "thumbnail_url" in metadata:
+            logging.info(f"Downloading {metadata['thumbnail_url']}....")
+            try:
+                response = urllib.request.urlopen(metadata["thumbnail_url"])
+                thumbnail_bytes = response.read()
+            except Exception as e:
+                logging.warning(
+                    f"Could not download {metadata['thumbnail_url']} for media {m.identifier}..", exc_info=e
+                )
+        
         # Create the content
         return self.content_api.create(
             video_file=video_bytes,
@@ -64,4 +76,5 @@ class CopyVideo(ContentCreator):
             source_id=m.identifier,
             stream_id=m.stream_id,
             metadata=metadata,
+            thumbnail_file=thumbnail_bytes
         )

@@ -72,6 +72,7 @@ class Content:
         str
     ] = None  # The id used by the source provider -- i.e., google photos id.
     stream_id: Optional[int] = None  # Which stream contained the original media
+    thumbnail: Optional[str] = None  # Hash of the thumbnail image in the object store
 
 class PipelineStatus(Enum):
     Successful = "Successful"

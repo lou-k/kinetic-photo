@@ -111,6 +111,10 @@ class GooglePhotosStream(Stream):
         created_at = metadata["creationTime"]
         del metadata["creationTime"]
 
+        # add the thumbnail url
+        if "baseUrl" in m.val:
+            metadata["thumbnail_url"] = m.val["baseUrl"]
+
         return StreamMedia(
             created_at=datetime.fromisoformat(created_at),
             identifier=m.val["id"],
