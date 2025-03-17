@@ -107,14 +107,14 @@ async def get_video(
         raise HTTPException(status_code=404, detail="Video not found")
 
 
-@router.get("/thumbnail/{id}")
+@router.get("/poster/{id}")
 @inject
-async def get_thumbnail(
+async def get_poster(
     object_store: Annotated[ObjectStore, Depends(Provide[Container.object_store])],
     id: str,
 ):
     if object_store.exists(id):
-        thumbnail_object = object_store.get(id)
-        return StreamingResponse(iter([thumbnail_object]), media_type="image/jpeg")
+        poster_object = object_store.get(id)
+        return StreamingResponse(iter([poster_object]), media_type="image/jpeg")
     else:
-        raise HTTPException(status_code=404, detail="Thumbnail not found")
+        raise HTTPException(status_code=404, detail="Poster not found")

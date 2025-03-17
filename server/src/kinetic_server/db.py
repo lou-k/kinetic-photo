@@ -167,7 +167,7 @@ class ContentDb:
                     f"Due to an sqlite bug, processed_at must have no timezone"
                 )
             self.connection.execute(
-                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, pipeline_id, versions, thumbnail) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "REPLACE INTO content (id, created_at, processed_at, height, width, source_id, metadata, stream_id, pipeline_id, versions, poster) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     c.id,
                     c.created_at,
@@ -179,7 +179,7 @@ class ContentDb:
                     c.stream_id,
                     c.pipeline_id,
                     versions,
-                    c.thumbnail,
+                    c.poster,
                 ),
             )
 
@@ -233,7 +233,7 @@ class ContentDb:
                 metadata=json.loads(metadata) if metadata else None,
                 stream_id=stream_id,
                 versions={k: v for k, v in json.loads(versions).items()},
-                thumbnail=thumbnail,
+                poster=poster,
             )
             for (
                 id,
@@ -246,7 +246,7 @@ class ContentDb:
                 stream_id,
                 width,
                 versions,
-                thumbnail,
+                poster,
             ) in results
         ]
 

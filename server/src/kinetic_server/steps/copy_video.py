@@ -56,16 +56,16 @@ class CopyVideo(ContentCreator):
             )
             return None
         
-        # Get the video thumbnail
-        thumbnail_bytes = None
-        if "thumbnail_url" in metadata:
-            logging.info(f"Downloading {metadata['thumbnail_url']}....")
+        # Get the video poster
+        poster_bytes = None
+        if "poster_url" in metadata:
+            logging.info(f"Downloading {metadata['poster_url']}....")
             try:
-                response = urllib.request.urlopen(metadata["thumbnail_url"])
-                thumbnail_bytes = response.read()
+                response = urllib.request.urlopen(metadata["poster_url"])
+                poster_bytes = response.read()
             except Exception as e:
                 logging.warning(
-                    f"Could not download {metadata['thumbnail_url']} for media {m.identifier}..", exc_info=e
+                    f"Could not download {metadata['poster_url']} for media {m.identifier}..", exc_info=e
                 )
         
         # Create the content
@@ -76,5 +76,5 @@ class CopyVideo(ContentCreator):
             source_id=m.identifier,
             stream_id=m.stream_id,
             metadata=metadata,
-            thumbnail_file=thumbnail_bytes
+            poster_file=poster_bytes
         )

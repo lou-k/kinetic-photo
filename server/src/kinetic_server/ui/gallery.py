@@ -43,9 +43,9 @@ class Gallery:
             items = []
             for item in content_items:
                 item_dict = item.to_dict()
-                # Add thumbnail and video URLs if available
-                if item.thumbnail:
-                    item_dict["thumbnail_url"] = f"/thumbnail/{item.thumbnail}"
+                # Add poster and video URLs if available
+                if item.poster:
+                    item_dict["poster_url"] = f"/poster/{item.poster}"
                 # Add video URL based on content ID or versions
                 item_dict["video_url"] = f"/video/{item.id}"
                 
@@ -83,10 +83,10 @@ class Gallery:
         """Render a single gallery item with lazy-loading video"""
         with ui.card().classes('w-full'):
             # Show video content with lazy loading
-            # Use thumbnail as poster if available and only load video when user hovers
+            # Use poster image if available and only load video when user hovers
             with ui.card_section().classes('relative w-full h-48 video-container') as container:
-                if 'thumbnail_url' in item and item['thumbnail_url']:
-                    video = ui.video(item['video_url'], controls=False, loop=True).props(f'poster={item["thumbnail_url"]} preload="none" muted').classes('w-full h-48')
+                if 'poster_url' in item and item['poster_url']:
+                    video = ui.video(item['video_url'], controls=False, loop=True).props(f'poster={item["poster_url"]} preload="none" muted').classes('w-full h-48')
                 else:
                     video = ui.video(item['video_url'], controls=False, loop=True).props('preload="none" muted').classes('w-full h-48')
                 
