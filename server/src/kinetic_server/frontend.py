@@ -7,8 +7,7 @@ from .db import ContentDb
 from dependency_injector.wiring import Provide, inject
 
 # Import UI components from centralized module
-from .ui import Gallery, MainLayout
-
+from .ui import MainLayout
 
 @inject
 def init(
@@ -18,9 +17,5 @@ def init(
 ) -> None:
     """Initialize the frontend UI components"""
     
-    # Create UI components
-    gallery = Gallery(content_db)
-    
     # Create and setup main layout
-    layout = MainLayout(fastapi_app, frames_api, gallery)
-    layout.setup()
+    layout = MainLayout(fastapi_app, frames_api, content_db)

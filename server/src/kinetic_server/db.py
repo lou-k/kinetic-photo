@@ -186,7 +186,6 @@ class ContentDb:
     def query(
         self,
         limit: int,
-        skip: Optional[int] = None,
         source_id: Optional[str] = None,
         stream_id: Optional[int] = None,
         pipeline_id: Optional[int] = None,
@@ -200,8 +199,8 @@ class ContentDb:
                 ("source_id == ?", source_id),
                 ("stream_id == ?", stream_id),
                 ("pipeline_id == ?", pipeline_id),
-                ("created_at > ?", created_after),
-                ("created_at < ?", created_before),
+                ("datetime(created_at) > datetime(?)", created_after),
+                ("datetime(created_at) < datetime(?)", created_before),
                 ("json_extract(metadata, '$.orientation') == ?", orientation),
             ]
             if x[1]
@@ -215,10 +214,6 @@ class ContentDb:
             query += "WHERE " + where_clause
         query += " ORDER BY created_at DESC LIMIT ?"
         parameters += (limit,)
-
-        if skip:
-            query += " OFFSET ?"
-            parameters += (skip,)
 
         with self.connection:
             results = self.connection.execute(query, parameters).fetchall()

@@ -1,122 +1,130 @@
-from typing import Dict, Any, List
+from dataclasses import dataclass
+from datetime import datetime
+from typing import List, Optional, Tuple
+from dataclasses_json import dataclass_json
 from nicegui import ui
+
+from kinetic_server.common import Content
 
 from ..db import ContentDb
 
 
-class Gallery:
-    """Gallery component for displaying video content with hover-based lazy loading"""
-    
-    def __init__(self, content_db: ContentDb):
-        """Initialize the gallery with required dependencies"""
-        self.content_db = content_db
-        self.state = {
-            'items': [],
-            'page': 1,
-            'has_more': True,
-            'loading': False,
-            'grid': None
-        }
-    
-    def load_page(self, page: int = 1, append: bool = False) -> None:
-        """Load a page of gallery content directly from ContentDb"""
-        if self.state['loading']:
-            return
-            
-        self.state['loading'] = True
-        try:
-            # Get page_size + 1 items to check if there are more pages
-            page_size = 12
-            skip = (page - 1) * page_size
-            limit = page_size + 1
-            
-            # Query content from database directly
-            content_items = self.content_db.query(limit=limit, skip=skip)
-            
-            # Check if there are more pages
-            has_more = len(content_items) > page_size
-            # Truncate to requested page size
-            if has_more:
-                content_items = content_items[:page_size]
-            
-            # Convert Content objects to dictionaries
-            items = []
-            for item in content_items:
-                item_dict = item.to_dict()
-                # Add poster and video URLs if available
-                if item.poster:
-                    item_dict["poster_url"] = f"/poster/{item.poster}"
-                # Add video URL based on content ID or versions
-                item_dict["video_url"] = f"/video/{item.id}"
-                
-                # If there's a faded version available, use that instead
-                if item.versions and "faded" in item.versions:
-                    item_dict["video_url"] = f"/video/{item.versions['faded']}"
-                items.append(item_dict)
-            
-            # Update gallery state
-            if append:
-                self.state['items'].extend(items)
+@dataclass_json
+@dataclass
+class GalleryQuery:
+    created_before: str = datetime.now().isoformat()  # a datetime string
+    limit: int = 24
+    orientation: Optional[str] = None
+    source_id: Optional[str] = None
+    stream_id: Optional[int] = None
+    pipeline_id: Optional[int] = None
+
+
+def _next_page(
+    state: GalleryQuery,
+    content_db: ContentDb,
+) -> Tuple[List[Content], GalleryQuery, bool]:
+    content_items = content_db.query(**state.to_dict())
+
+    # If we have items, update the state for the next query
+    if len(content_items):
+        next_state = GalleryQuery(**state.to_dict())
+        next_state.created_before = content_items[-1].created_at.isoformat()
+
+        # Check if there are more items after this batch
+        next_items_check = content_db.query(**{**next_state.to_dict(), "limit": 1})
+        has_next = len(next_items_check) > 0
+
+        return content_items, next_state, has_next
+    else:
+        return content_items, state, False
+
+
+def _masory_grid():
+    # Create a container with the masonry grid class
+    ui.html(
+        """
+        <style>
+            .masonry-grid {
+                column-count: 6; /* Default for large screens */
+                column-gap: 0;
+            }
+            @media (max-width: 600px) {
+                .masonry-grid {
+                    column-count: 2; /* Fewer columns on small screens */
+                }
+            }
+            @media (min-width: 601px) and (max-width: 900px) {
+                .masonry-grid {
+                    column-count: 3; /* Medium screens */
+                }
+            }
+        </style>
+    """
+    )
+    return ui.element("div").classes("masonry-grid")
+
+
+def _render_gallery_item(content: Content) -> None:
+    """Render a single gallery item with lazy-loading video"""
+    # Each item is wrapped in a div styled for masonry layout
+    with ui.element("div").classes("masonry-item").style(
+        "break-inside: avoid; margin: 0; padding: 0;"
+    ):
+        with ui.card().props("flat dense square").classes("q-pa-none"):
+            # Define video URL based on content ID or preferred version
+            video_url = f"/video/{content.id}"
+
+            # Create poster URL if available
+            poster_url = f"/poster/{content.poster}" if content.poster else None
+
+            if poster_url:
+                video = (
+                    ui.video(video_url, controls=False, loop=True)
+                    .props(f'poster={poster_url} preload="none" muted')
+                    .classes("w-full h-auto")
+                )
             else:
-                self.state['items'] = items
-            
-            self.state['page'] = page
-            self.state['has_more'] = has_more
-            
-            # Create or clear the gallery grid
-            if self.state['grid'] is None:
-                self.state['grid'] = ui.grid(columns=4).classes('w-full gap-4')
-            
-            # if not append:
-            #     self.state['grid'].clear()
-            
-            # Add new items
-            with self.state['grid']:
-                items_to_display = items if append else self.state['items']
-                for item in items_to_display:
-                    self._render_gallery_item(item)
-                    
-        finally:
-            self.state['loading'] = False
-    
-    def _render_gallery_item(self, item: Dict[str, Any]) -> None:
-        """Render a single gallery item with lazy-loading video"""
-        with ui.card().classes('w-full'):
-            # Show video content with lazy loading
-            # Use poster image if available and only load video when user hovers
-            with ui.card_section().classes('relative w-full h-48 video-container') as container:
-                if 'poster_url' in item and item['poster_url']:
-                    video = ui.video(item['video_url'], controls=False, loop=True).props(f'poster={item["poster_url"]} preload="none" muted').classes('w-full h-48')
-                else:
-                    video = ui.video(item['video_url'], controls=False, loop=True).props('preload="none" muted').classes('w-full h-48')
-                
-                # Create a hover element that spans the entire video area
-                hover_area = ui.element('div').classes('absolute inset-0 cursor-pointer').style('z-index: 10; top: 0; left: 0; right: 0; bottom: 0')
-                
-                # Create closures with the correct video reference by using default arguments
-                def on_mouse_enter(vid=video):
-                    # Force load the video and play it on hover
-                    # vid.run_method('load')
-                    vid.run_method('play')
-                    
-                def on_mouse_leave(vid=video):
-                    # Pause the video when mouse leaves
-                    vid.run_method('pause')
-                    
-                # Attach mouse event handlers
-                hover_area.on('mouseenter', on_mouse_enter)
-                hover_area.on('mouseleave', on_mouse_leave)
-    
-    def load_more(self) -> None:
-        """Load the next page of gallery content"""
-        if not self.state['has_more'] or self.state['loading']:
-            return
-        
-        self.state['page'] += 1
-        self.load_page(self.state['page'], append=True)
-    
-    def render(self) -> None:
-        """Render the gallery component with load more button"""
-        # Initialize gallery
-        self.load_page()
-        load_more_button = ui.button('Load More', on_click=self.load_more).props('outline')
+                video = (
+                    ui.video(video_url, controls=False, loop=True)
+                    .props('preload="none" muted')
+                    .classes("w-full h-auto")
+                )
+
+            # Create a hover element that spans the entire video area
+            hover_area = (
+                ui.element("div")
+                .classes("absolute inset-0 cursor-pointer")
+                .style("z-index: 10; top: 0; left: 0; right: 0; bottom: 0")
+            )
+
+            # Create closures with the correct video reference by using default arguments
+            def on_mouse_enter(vid=video):
+                # Force load the video and play it on hover
+                vid.run_method("play")
+
+            def on_mouse_leave(vid=video):
+                # Pause the video when mouse leaves
+                vid.run_method("pause")
+
+            # Attach mouse event handlers
+            hover_area.on("mouseenter", on_mouse_enter)
+            hover_area.on("mouseleave", on_mouse_leave)
+
+
+def render(content_db: ContentDb, initial_query: GalleryQuery = GalleryQuery()):
+
+    grid = _masory_grid()
+    has_next = True
+    state = initial_query
+
+    def load_more():
+        nonlocal state, has_next
+        with grid:
+            content, state, has_next = _next_page(state, content_db)
+            for item in content:
+                _render_gallery_item(item)
+
+    load_more()
+    if has_next:
+        ui.button("Load More", on_click=load_more)

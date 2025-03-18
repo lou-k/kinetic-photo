@@ -16,18 +16,22 @@
             "args": "${input:cli-arguments}"
         },
         {
-            "name": "Debug Uvicorn Server",
+            "name": "Debug Uvicorn",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "cwd": "${workspaceFolder}",
             "args": [
                 "kinetic_server.asgi:app",
-                "--reload"
+                "--reload",
+                "--host", "0.0.0.0",
+                "--port", "8000",
+                "--log-level", "debug"
             ],
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"
-            }
+            },
+            "justMyCode": true
         }
     ],
     "inputs": [
