@@ -243,6 +243,7 @@ class PipelineApi:
             pd.DataFrame: A dataframe containing all pipeline information.
         """
         return self._db.list()
+        
 
     def list_runs(self) -> pd.DataFrame:
         """Lists all of the pipeline runs in the database

@@ -2,6 +2,8 @@ import random
 import uuid
 from typing import List, Optional
 
+import pandas as pd
+
 from kinetic_server.common import Content, Frame
 from kinetic_server.db import ContentDb, FramesDb
 
@@ -48,7 +50,7 @@ class FramesApi:
         """
         return self._db.get(id)
 
-    def list(self):
+    def list(self) -> pd.DataFrame:
         return self._db.list()
 
     def remove(self, id: str) -> None:
@@ -57,3 +59,11 @@ class FramesApi:
     def add(self, name: str, **options) -> Frame:
         id = str(uuid.uuid1())
         return self._db.add(id, name, **options)
+
+    def update(self, frame: Frame) -> None:
+        """Updates an existing frame in the database.
+
+        Args:
+            frame (Frame): The frame object containing updated data.
+        """
+        self._db.update(frame.id, frame.name, **frame.options)

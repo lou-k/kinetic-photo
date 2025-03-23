@@ -269,6 +269,19 @@ class FramesDb:
                 return Frame(id, name, json.loads(options))
             else:
                 return None
+    
+    def search(self) -> List[Frame]:
+        with self.connection:
+            res = self.connection.execute(
+                "SELECT * FROM frames"
+            ).fetchall()
+            if res:
+                return [
+                    Frame(id, name, json.loads(options))
+                    for id, name, options in res
+                ]
+            else:
+                return []
 
     def remove(self, id: str) -> None:
         """
@@ -287,6 +300,21 @@ class FramesDb:
                 (id, name, json.dumps(options)),
             )
         return self.get(id)
+
+    def update(self, id: str, name: Optional[str] = None, **options) -> None:
+        """
+        Updates an existing frame in the datastore.
+        """
+        with self.connection:
+            if name:
+                self.connection.execute(
+                    "UPDATE frames SET name = ? WHERE id = ?", (name, id)
+                )
+            if options:
+                self.connection.execute(
+                    "UPDATE frames SET options = ? WHERE id = ?",
+                    (json.dumps(options), id),
+                )
 
 
 class PipelineDb:

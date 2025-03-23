@@ -7,6 +7,7 @@ from nicegui import ui
 from kinetic_server.common import Content
 
 from ..db import ContentDb
+import math
 
 
 @dataclass_json
@@ -40,37 +41,38 @@ def _next_page(
         return content_items, state, False
 
 
-def _masory_grid():
-    # Create a container with the masonry grid class
-    ui.html(
+def _masory_grid(column_width: int):
+    return (
+        ui.element("div")
+        .style(
+            f"""
+            display: grid;
+            grid-template-columns: repeat(auto-fill, {column_width}px);
+            grid-auto-rows: 1px;
+            overflow: hidden; 
+            grid-row-gap: 0px;
+            grid-column-gap: 0px;
         """
-        <style>
-            .masonry-grid {
-                column-count: 6; /* Default for large screens */
-                column-gap: 0;
-            }
-            @media (max-width: 600px) {
-                .masonry-grid {
-                    column-count: 2; /* Fewer columns on small screens */
-                }
-            }
-            @media (min-width: 601px) and (max-width: 900px) {
-                .masonry-grid {
-                    column-count: 3; /* Medium screens */
-                }
-            }
-        </style>
-    """
+        ).classes("w-full")
     )
-    return ui.element("div").classes("masonry-grid")
 
 
-def _render_gallery_item(content: Content) -> None:
+def _render_gallery_item(content: Content, column_width: int) -> None:
     """Render a single gallery item with lazy-loading video"""
-    # Each item is wrapped in a div styled for masonry layout
-    with ui.element("div").classes("masonry-item").style(
-        "break-inside: avoid; margin: 0; padding: 0;"
-    ):
+
+    with ui.element("div") as grid_item:
+        # If we can get the width and height of the content from the metadata,
+        # set the aspect ratio in the css so masonry can know the true dimensions of the media.
+        width = content.metadata.get("width")
+        height = content.metadata.get("height")
+        if width and height:
+            aspect_ratio = int(width) / int(height)
+            item_height = column_width / aspect_ratio
+            # round item_height to nearest integer
+            item_height = round(item_height)
+            # grid_item.style(f"grid-row-end: span calc(width / {aspect_ratio});")
+            grid_item.style(f"grid-row-end: span {item_height};")
+
         with ui.card().props("flat dense square").classes("q-pa-none"):
             # Define video URL based on content ID or preferred version
             video_url = f"/video/{content.id}"
@@ -112,19 +114,36 @@ def _render_gallery_item(content: Content) -> None:
             hover_area.on("mouseleave", on_mouse_leave)
 
 
-def render(content_db: ContentDb, initial_query: GalleryQuery = GalleryQuery()):
 
-    grid = _masory_grid()
-    has_next = True
-    state = initial_query
 
-    def load_more():
-        nonlocal state, has_next
-        with grid:
-            content, state, has_next = _next_page(state, content_db)
-            for item in content:
-                _render_gallery_item(item)
+class GalleryUI:
 
-    load_more()
-    if has_next:
-        ui.button("Load More", on_click=load_more)
+    def __init__(self, content_db: ContentDb):
+        self.content_db = content_db
+    
+    def render(self, initial_query: GalleryQuery = GalleryQuery(), column_width=248):
+
+        grid = _masory_grid(column_width)
+        has_next = True
+        state = initial_query
+
+        def load_more():
+            nonlocal state, has_next
+            with grid:
+                content, state, has_next = _next_page(state, self.content_db)
+                for item in content:
+                    _render_gallery_item(item, column_width)
+
+        load_more()
+
+        # Add a timer to check for scroll position
+        async def check_scroll():
+            # Check if the user has scrolled near the bottom of the page
+            scrolled_to_bottom = await ui.run_javascript(
+                "window.pageYOffset + window.innerHeight >= document.documentElement.scrollHeight - 100"
+            )
+            if scrolled_to_bottom and has_next:
+                load_more()
+
+        # Use a timer to periodically check the scroll position
+        ui.timer(0.1, lambda: check_scroll())
