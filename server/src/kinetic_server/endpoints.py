@@ -102,7 +102,12 @@ async def get_video(
     if object_store.exists(id):
         video_object = object_store.get(id)
         # TODO -- ensure that the content type is correct - maybe store it in the objectstore?
-        return StreamingResponse(iter([video_object]), media_type="video/mp4")
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Range": f"bytes 0-{len(video_object)}/{len(video_object)}",
+            "Content-Length": str(len(video_object)),
+        }
+        return StreamingResponse(iter([video_object]), media_type="video/mp4", headers=headers)
     else:
         raise HTTPException(status_code=404, detail="Video not found")
 
